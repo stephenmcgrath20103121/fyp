@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.15)
+project(fyp_server)
+find_package(Poco REQUIRED Net Util Foundation)
+add_executable(${PROJECT_NAME} main.cpp)
+target_link_libraries(fyp_server Poco::Net Poco::Util Poco::Foundation)
