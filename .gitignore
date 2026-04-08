@@ -1,4 +1,7 @@
 build/
 sampleVideo.mp4
 hls_output
+hls_cache
 fyp_server
+mediacenter*
+thumbnails

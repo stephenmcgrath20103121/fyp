@@ -5,5 +5,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Poco REQUIRED COMPONENTS Net Util Foundation JSON)
+find_package(SQLite3 REQUIRED)
+
 add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(fyp_server Poco::Net Poco::Util Poco::Foundation Poco::JSON)
+target_link_libraries(${PROJECT_NAME} 
+    Poco::Net 
+    Poco::Util 
+    Poco::Foundation 
+    Poco::JSON
+    SQLite3::SQLite3
+)
