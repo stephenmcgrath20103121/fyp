@@ -2,6 +2,44 @@
 import { createTheme } from '@mui/material/styles';
 import { ThemeOptions } from '@mui/material/styles';
 
+declare module '@mui/material/styles' {
+  interface Palette {
+    tertiary: Palette['primary'];
+    movie: Palette['primary'];
+    music: Palette['primary'];
+    image: Palette['primary'];
+  }
+
+  interface PaletteOptions {
+    tertiary?: PaletteOptions['primary'];
+    movie?: PaletteOptions['primary'];
+    music?: PaletteOptions['primary'];
+    image?: PaletteOptions['primary'];
+  }
+}
+
+declare module '@mui/material/Avatar' {
+  interface AvatarPropsColorOverrides {
+    movie: true;
+    music: true;
+    image: true;
+  }
+}
+
+declare module '@mui/material/ListItemButton' {
+  interface ListItemButtonPropsColorOverrides {
+    movie: true;
+    music: true;
+    image: true;
+  }
+}
+
+declare module '@mui/material/Card' {
+  interface ListItemButtonPropsColorOverrides {
+    tertiary: true;
+  }
+}
+
 export const themeOptions: ThemeOptions = {
   cssVariables: true,
   palette: {
@@ -34,9 +72,33 @@ export const themeOptions: ThemeOptions = {
     success: {
       main: '#4fce53',
     },
+    tertiary: {
+      main: '#8580b8',
+      light: '#b7b1fd',
+      dark: '#474562',
+      contrastText: '#0e0725',
+    },
+    movie: {
+      main: '#ea8706',
+      light: '#f1cdb9',
+      dark: '#8b5104',
+      contrastText: '#0e0725',
+    },
+    music: {
+      main: '#abf353',
+      light: '#ecfadb',
+      dark: '#599b09',
+      contrastText: '#0e0725',
+    },
+    image: {
+      main: '#30deea',
+      light: '#d5f8fb',
+      dark: '#0e8890',
+      contrastText: '#0e0725',
+    },
   },
   typography: {
-    fontFamily: '"Geist", "Geist Mono", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Geist", "Geist Mono", "Roboto", "Helvetica", "Arial", sans-serif',
   },
   spacing: 8,
   shape: {
