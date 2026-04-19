@@ -22,8 +22,8 @@ export default function mediaCard() {
     <Card sx={{ maxWidth: 200, maxHeight: 500, mt: 1.5, mb: 1.5, bgcolor: 'primary.main' }}>
       <CardHeader
         avatar={
-            <Avatar sx={{ backgroundColor: 'lightcoral', maxWidth: 24, maxHeight: 24 }}>
-              <FavoriteIcon sx={{color: 'primary.contrastText', maxWidth: 16, maxHeight: 16}} />
+            <Avatar sx={{ backgroundColor: 'lightcoral', maxWidth: 28, maxHeight: 28 }}>
+              <FavoriteIcon sx={{color: 'primary.contrastText', maxWidth: 18, maxHeight: 18}} />
             </Avatar>
         }
         title={

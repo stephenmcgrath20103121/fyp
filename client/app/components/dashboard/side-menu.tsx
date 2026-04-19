@@ -1,7 +1,7 @@
 'use client'
 import * as React from 'react';
 import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -14,7 +14,7 @@ import Avatar from '@mui/material/Avatar';
 import Divider from '@mui/material/Divider';
 
 export default function SideMenu() {
-  const [selectedIndex, setSelectedIndex] = React.useState(1);
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
 
   const handleListItemClick = (
     event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -24,16 +24,16 @@ export default function SideMenu() {
   };
   
   return (
-    <Box sx={{ width: '100%', maxWidth: 350, maxHeight: 320, bgcolor: 'background.paper', p: 1, borderRadius: 3}}>
+    <Grid sx={{ maxWidth: 350, bgcolor: 'background.paper', p: 1, borderRadius: 3}}>
       <Typography component ="h5" variant="h5" gutterBottom sx={{pl:2, pt:.25, pb:.5}}>
         Library
       </Typography>
-      <Box sx={{ width: '100%', maxWidth: 300, bgcolor: 'primary.main', margin: 'auto', borderRadius: 2 }}>
+      <Grid sx={{ maxWidth: 300, bgcolor: 'primary.main', margin: 'auto', borderRadius: 2 }}>
       <nav aria-label="media types">
         <List>
           <ListItem  alignItems="flex-start">
             <ListItemButton 
-              sx={{ width: '100%', maxWidth: 300, bgcolor: 'primary.main', '&:hover': {bgcolor: 'movie.light'}, color: 'movie.contrastText', borderRadius: 2 }}
+              sx={{ maxWidth: 300, bgcolor: 'primary.main', '&:hover': {bgcolor: 'movie.light'}, color: 'movie.contrastText', borderRadius: 2 }}
               selected={selectedIndex === 0}
               onClick={(event) => handleListItemClick(event, 0)}
             >
@@ -77,7 +77,7 @@ export default function SideMenu() {
           </ListItem>
         </List>
       </nav>
-      </Box>
-    </Box>
+      </Grid>
+    </Grid>
   );
 }
