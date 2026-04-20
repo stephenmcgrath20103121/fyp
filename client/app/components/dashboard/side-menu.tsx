@@ -25,21 +25,21 @@ export default function SideMenu() {
   
   return (
     <Grid sx={{ maxWidth: 350, bgcolor: 'background.paper', p: 1, borderRadius: 3}}>
-      <Typography component ="h5" variant="h5" gutterBottom sx={{pl:2, pt:.25, pb:.5}}>
+      <Typography component ="h5" variant="h5" gutterBottom sx={{pl:2, pt:1, pb:.5}}>
         Library
       </Typography>
-      <Grid sx={{ maxWidth: 300, bgcolor: 'primary.main', margin: 'auto', borderRadius: 2 }}>
+      <Grid sx={{ maxWidth: 300, bgcolor: 'primary.main', margin: 2, borderRadius: 2 }}>
       <nav aria-label="media types">
         <List>
           <ListItem  alignItems="flex-start">
             <ListItemButton 
-              sx={{ maxWidth: 300, bgcolor: 'primary.main', '&:hover': {bgcolor: 'movie.light'}, color: 'movie.contrastText', borderRadius: 2 }}
+              sx={{ maxWidth: 300, bgcolor: 'primary.main', '&:hover': {bgcolor: 'video.light'}, color: 'video.contrastText', borderRadius: 2 }}
               selected={selectedIndex === 0}
               onClick={(event) => handleListItemClick(event, 0)}
             >
               <ListItemAvatar>
-                <Avatar sx={{bgcolor: 'movie.main'}}>
-                  <VideoIcon sx={{color: 'movie.contrastText'}} />
+                <Avatar sx={{bgcolor: 'video.main'}}>
+                  <VideoIcon sx={{color: 'video.contrastText'}} />
                 </Avatar>
               </ListItemAvatar>
               <ListItemText primary="Videos" />

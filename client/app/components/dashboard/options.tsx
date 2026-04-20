@@ -23,13 +23,13 @@ export default function Options() {
       </Grid>
       <Grid container spacing={1} sx={{mt: 2, mb: 2}}>
         <Link href={`/media/1`}>
-          <IconButton size="large" sx={{bgcolor: "secondary.main", color: "primary.contrastText", m: 1}}>
-            <HomeIcon sx={{color: 'movie.contrastText'}} />
+          <IconButton sx={{width: 48, height: 48, bgcolor: "secondary.main", color: "primary.contrastText", m: 1}}>
+            <HomeIcon sx={{width: 32, height: 32, color: 'video.contrastText'}} />
           </IconButton>
         </Link>
         <Link href={`/media/1`}>
-          <IconButton size="large" sx={{bgcolor: "secondary.main", color: "primary.contrastText", m: 1}}>
-            <SettingsIcon sx={{color: 'movie.contrastText'}} />
+          <IconButton sx={{width: 48, height: 48, bgcolor: "secondary.main", color: "primary.contrastText", m: 1}}>
+            <SettingsIcon sx={{width: 32, height: 32, color: 'video.contrastText'}} />
           </IconButton>
         </Link>
       </Grid>

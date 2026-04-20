@@ -5,14 +5,14 @@ import { ThemeOptions } from '@mui/material/styles';
 declare module '@mui/material/styles' {
   interface Palette {
     tertiary: Palette['primary'];
-    movie: Palette['primary'];
+    video: Palette['primary'];
     music: Palette['primary'];
     image: Palette['primary'];
   }
 
   interface PaletteOptions {
     tertiary?: PaletteOptions['primary'];
-    movie?: PaletteOptions['primary'];
+    video?: PaletteOptions['primary'];
     music?: PaletteOptions['primary'];
     image?: PaletteOptions['primary'];
   }
@@ -20,7 +20,7 @@ declare module '@mui/material/styles' {
 
 declare module '@mui/material/Avatar' {
   interface AvatarPropsColorOverrides {
-    movie: true;
+    video: true;
     music: true;
     image: true;
   }
@@ -28,7 +28,7 @@ declare module '@mui/material/Avatar' {
 
 declare module '@mui/material/ListItemButton' {
   interface ListItemButtonPropsColorOverrides {
-    movie: true;
+    video: true;
     music: true;
     image: true;
   }
@@ -75,10 +75,10 @@ export const themeOptions: ThemeOptions = {
     tertiary: {
       main: '#8580b8',
       light: '#b7b1fd',
-      dark: '#474562',
+      dark: '#5f5c84',
       contrastText: '#0e0725',
     },
-    movie: {
+    video: {
       main: '#ea8706',
       light: '#f1cdb9',
       dark: '#8b5104',
