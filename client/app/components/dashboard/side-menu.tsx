@@ -12,6 +12,8 @@ import ImageIcon from '@mui/icons-material/Image';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 import Avatar from '@mui/material/Avatar';
 import Divider from '@mui/material/Divider';
+import Button from '@mui/material/Button';
+import AddIcon from '@mui/icons-material/Add';
 
 export default function SideMenu() {
   const [selectedIndex, setSelectedIndex] = React.useState(0);
@@ -25,9 +27,14 @@ export default function SideMenu() {
   
   return (
     <Grid sx={{ maxWidth: 350, bgcolor: 'background.paper', p: 1, borderRadius: 3}}>
+      <Grid container sx={{justifyContent: 'space-between', ml: .5, mr: .5}}>
       <Typography component ="h5" variant="h5" gutterBottom sx={{pl:2, pt:1, pb:.5}}>
         Library
       </Typography>
+      <Button variant="contained" size="small" startIcon={<AddIcon />} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: 2, mr: 2, mt: 1, mb: 1, pl: 7, pr: 7}}>
+        Add
+      </Button>
+      </Grid>
       <Grid sx={{ maxWidth: 300, bgcolor: 'primary.main', margin: 2, borderRadius: 2 }}>
       <nav aria-label="media types">
         <List>

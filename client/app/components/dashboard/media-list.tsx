@@ -18,7 +18,7 @@ export default function MediaList() {
   };
   
   return (
-    <Grid sx={{ maxWidth: 750, bgcolor: 'background.paper', pl: 1, pr: 1, p1: 2, borderRadius: 3}}>
+    <Grid sx={{ bgcolor: 'background.paper', pl: 1, pr: 1, p1: 2, borderRadius: 3}}>
       <Grid container columnSpacing={2}>
         <Typography component ="h5" variant="h5" gutterBottom sx={{pl:2, pt:2.5, pb:.5}}>
           Media
@@ -30,7 +30,7 @@ export default function MediaList() {
           <CancelIcon sx={{width: 42, height: 42, color: 'primary.dark'}} />
         </IconButton>
       </Grid>
-      <Grid sx={{ maxWidth: 700, bgcolor: 'tertiary.main', margin: 'auto', borderRadius: 2 }}>
+      <Grid sx={{ bgcolor: 'tertiary.main', margin: 'auto', borderRadius: 2 }}>
       <Grid container sx={{justifyContent: "space-evenly", alignItems: "flex-start",}}>
         <MediaCard />
         <MediaCard />
