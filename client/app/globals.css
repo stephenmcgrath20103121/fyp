@@ -5,3 +5,8 @@
     background-color:#c383e2;
     color:white;
 }
+
+:root {
+  --plyr-color-main: #c383e2;
+  --plyr-video-background: #0e0725;
+}

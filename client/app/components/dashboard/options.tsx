@@ -22,7 +22,7 @@ export default function Options() {
       </Typography>
       </Grid>
       <Grid container spacing={1} sx={{mt: 2, mb: 2}}>
-        <Link href={`/media/1`}>
+        <Link href={`/`}>
           <IconButton sx={{width: 48, height: 48, bgcolor: "secondary.main", color: "primary.contrastText", m: 1}}>
             <HomeIcon sx={{width: 32, height: 32, color: 'video.contrastText'}} />
           </IconButton>
