@@ -15,9 +15,11 @@ import PlayIcon from '@mui/icons-material/PlayCircle'
 import Grid from "@mui/material/Grid";
 import Link from "next/link";
 import Avatar from '@mui/material/Avatar';
-import img from '../../../public/placeholder.png'
+import { Media } from '@/app/types/index';
+import { secsToMins } from '@/app/lib/utils'
+import img from '../../../public/placeholder.png';
 
-export default function mediaCard() {
+export default function MediaCard({ media }: { media: Media }) {
   return (
     <Card sx={{ maxWidth: 200, maxHeight: 500, mt: 1.5, mb: 1.5, bgcolor: 'primary.main' }}>
       <CardHeader
@@ -28,7 +30,7 @@ export default function mediaCard() {
         }
         title={
           <Typography variant="h6" component="p" sx={{ color: 'primary.contrastText', maxWidth: 225, mt:1 }}>
-            Title
+            {media.title}{" "}
           </Typography>
         }
         sx={{ maxHeight: 75, color: 'tertiary.contrastText'}}
@@ -37,7 +39,9 @@ export default function mediaCard() {
       <CardMedia
         sx={{ width: 150, height: 150, ml: 3, mr: 3, mb: .5, border: 'solid', borderColor: 'tertiary.main', borderRadius: 1 }}
         image={
-          'file.svg'
+          media.thumbnail_path 
+            ? `${process.env.NEXT_PUBLIC_MEDIA_API}/api/media/${media.id}/thumbnail`
+            : 'file.svg'
         }
       />
       <CardContent sx={{bgcolor: 'tertiary.light'}} >
@@ -45,7 +49,7 @@ export default function mediaCard() {
           <Grid size={{xs: 8}} sx={{mb:1}}>
             <Typography variant="body1" component="p" sx={{fontSize: 14}}>
               <TimerIcon sx={{maxWidth: 14, maxHeight: 14, mr: .5, mb: .5}} />
-              120 mins
+              {secsToMins(media.duration_secs)}
             </Typography>
           </Grid>
           <Grid size={{xs: 8}} sx={{mb:1}}>
@@ -58,12 +62,12 @@ export default function mediaCard() {
       </CardContent>
       <CardActions disableSpacing>
       
-        <Link href={`/media/1`}>
+        <Link href={`/watch/${media.id}`}>
           <Button variant="contained" size="small" startIcon={<PlayIcon />} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: .5,mb: 1, pl: 3.5, pr: 3.5}}>
             View
           </Button>
         </Link>
-        <Link href={`/media/1`}>
+        <Link href={`/media/${media.id}`}>
           <IconButton size="small" sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: 2.5, mb: 1, mr: .5}}>
             <DeleteIcon />
           </IconButton>
