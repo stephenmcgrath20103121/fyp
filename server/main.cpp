@@ -65,7 +65,7 @@ private:
     bool createTables() {
         const char* sql = R"(
             CREATE TABLE IF NOT EXISTS media (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                id              INTEGER PRIMARY KEY,
                 title           TEXT    NOT NULL,
                 file_path       TEXT    NOT NULL UNIQUE,
                 media_type      TEXT    NOT NULL DEFAULT 'video',
@@ -383,11 +383,24 @@ public:
 
             // Insert into DB
             std::lock_guard<std::mutex> lock(g_db.mutex());
+
+            // Find the lowest unused id (first gap starting from 1)
+            const char* allIdsSql = "SELECT id FROM media ORDER BY id ASC;";
+            sqlite3_stmt* idStmt;
+            sqlite3_prepare_v2(g_db.handle(), allIdsSql, -1, &idStmt, nullptr);
+            int newId = 1;
+            while (sqlite3_step(idStmt) == SQLITE_ROW) {
+                int existing = sqlite3_column_int(idStmt, 0);
+                if (existing != newId) break;   // found a gap
+                newId++;
+            }
+            sqlite3_finalize(idStmt);
+
             const char* sql = R"(
                 INSERT INTO media
-                  (title, file_path, media_type, duration_secs, file_size,
+                  (id, title, file_path, media_type, duration_secs, file_size,
                    width, height, video_codec, audio_codec)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             )";
             sqlite3_stmt* stmt;
             if (sqlite3_prepare_v2(g_db.handle(), sql, -1, &stmt, nullptr)
@@ -395,16 +408,17 @@ public:
                 sendJSON(resp, 500, R"({"error":"db prepare failed"})");
                 return;
             }
-            sqlite3_bind_text(stmt, 1, title.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 2, filePath.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 3, mediaType.c_str(), -1, SQLITE_TRANSIENT);
-            sqlite3_bind_double(stmt, 4, meta.duration);
-            sqlite3_bind_int64(stmt, 5, meta.fileSize);
-            sqlite3_bind_int(stmt, 6, meta.width);
-            sqlite3_bind_int(stmt, 7, meta.height);
-            sqlite3_bind_text(stmt, 8, meta.videoCodec.c_str(), -1,
+            sqlite3_bind_int(stmt, 1, newId);
+            sqlite3_bind_text(stmt, 2, title.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 3, filePath.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text(stmt, 4, mediaType.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_double(stmt, 5, meta.duration);
+            sqlite3_bind_int64(stmt, 6, meta.fileSize);
+            sqlite3_bind_int(stmt, 7, meta.width);
+            sqlite3_bind_int(stmt, 8, meta.height);
+            sqlite3_bind_text(stmt, 9, meta.videoCodec.c_str(), -1,
                               SQLITE_TRANSIENT);
-            sqlite3_bind_text(stmt, 9, meta.audioCodec.c_str(), -1,
+            sqlite3_bind_text(stmt, 10, meta.audioCodec.c_str(), -1,
                               SQLITE_TRANSIENT);
 
             if (sqlite3_step(stmt) != SQLITE_DONE) {
@@ -415,8 +429,6 @@ public:
                     R"("detail":")" + err + R"("})");
                 return;
             }
-            int newId = static_cast<int>(sqlite3_last_insert_rowid(
-                            g_db.handle()));
             sqlite3_finalize(stmt);
 
             // Generate thumbnail (outside lock is fine, but simpler here)
