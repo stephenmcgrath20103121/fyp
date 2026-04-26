@@ -14,9 +14,11 @@ import Avatar from '@mui/material/Avatar';
 import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
 import AddIcon from '@mui/icons-material/Add';
+import AddMediaDialog from '@/app/components/dashboard/add-media-dialog';
 
 export default function SideMenu() {
   const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const [addDialogOpen, setAddDialogOpen] = React.useState(false);
 
   const handleListItemClick = (
     event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -31,7 +33,7 @@ export default function SideMenu() {
       <Typography component ="h5" variant="h5" gutterBottom sx={{pl:2, pt:1, pb:.5}}>
         Library
       </Typography>
-      <Button variant="contained" size="small" startIcon={<AddIcon />} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: 2, mr: 2, mt: 1, mb: 1, pl: 7, pr: 7}}>
+      <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: 2, mr: 2, mt: 1, mb: 1, pl: 7, pr: 7}}>
         Add
       </Button>
       </Grid>
@@ -85,6 +87,10 @@ export default function SideMenu() {
         </List>
       </nav>
       </Grid>
+      <AddMediaDialog
+        open={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+      />
     </Grid>
   );
 }
