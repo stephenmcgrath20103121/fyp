@@ -15,7 +15,6 @@ async function jsonRequest<T>(
       const body = await response.json();
       if (body?.error) detail = `: ${body.error}`;
     } catch {
-      /* response had no JSON body — fall through to fallback message */
     }
     throw new Error(`${fallbackMessage}${detail}`);
   }

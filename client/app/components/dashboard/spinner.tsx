@@ -11,7 +11,6 @@ export default function CircularIndeterminate() {
           marginLeft: '2em',
         }}}>
       <CircularProgress />
-      <CircularProgress />
     </Box>
   );
 }
