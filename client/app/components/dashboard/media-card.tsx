@@ -19,9 +19,11 @@ import Avatar from '@mui/material/Avatar';
 import { Media } from '@/app/types/index';
 import { secsToMins } from '@/app/lib/utils';
 import { getThumbnailUrl } from '@/app/api/mediaroot-server-api';
+import DeleteMediaDialog from '@/app/components/dashboard/delete-media-dialog';
 import img from '../../../public/placeholder.png';
 
 export default function MediaCard({ media }: { media: Media }) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   return (
     <Card sx={{ maxWidth: 200, maxHeight: 500, mt: 1.5, mb: 1.5, bgcolor: 'primary.main' }}>
       <CardHeader
@@ -65,13 +67,16 @@ export default function MediaCard({ media }: { media: Media }) {
             View
           </Button>
         </Link>
-        <Link href={`/media/${media.id}`}>
-          <IconButton size="small" sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: 2.5, mb: 1, mr: .5}}>
-            <DeleteIcon />
-          </IconButton>
-        </Link>
+        <IconButton size="small" aria-label={`Delete ${media.title}`} onClick={() => setDeleteDialogOpen(true)} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: 2.5, mb: 1, mr: .5}}>
+          <DeleteIcon />
+        </IconButton>
         
       </CardActions>
+      <DeleteMediaDialog
+        open={deleteDialogOpen}
+        media={media}
+        onClose={() => setDeleteDialogOpen(false)}
+      />
     </Card>
   );
 }

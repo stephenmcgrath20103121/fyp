@@ -20,7 +20,7 @@ export default function AddMediaDialog({ open, onClose }: Props) {
   const [title, setTitle] = React.useState('');
   const createMedia = useCreateMedia();
 
-  //Reset form when reopened
+  //Reset dialog when reopened
   React.useEffect(() => {
     if (open) {
       setFilePath('');
