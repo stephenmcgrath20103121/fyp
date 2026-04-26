@@ -6,13 +6,13 @@ import CardContent from "@mui/material/CardContent";
 import CardMedia from "@mui/material/CardMedia";
 import CardHeader from "@mui/material/CardHeader";
 import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FolderIcon from "@mui/icons-material/Folder";
 import TimerIcon from "@mui/icons-material/Timer";
-import DeleteIcon from '@mui/icons-material/Delete'
-import PlayIcon from '@mui/icons-material/PlayCircle'
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import PlayIcon from '@mui/icons-material/PlayCircle';
 import Grid from "@mui/material/Grid";
 import Link from "next/link";
 import Avatar from '@mui/material/Avatar';
@@ -20,10 +20,12 @@ import { Media } from '@/app/types/index';
 import { secsToMins } from '@/app/lib/utils';
 import { getThumbnailUrl } from '@/app/api/mediaroot-server-api';
 import DeleteMediaDialog from '@/app/components/dashboard/delete-media-dialog';
+import EditMediaDialog from '@/app/components/dashboard/edit-media-dialog';
 import img from '../../../public/placeholder.png';
 
 export default function MediaCard({ media }: { media: Media }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   return (
     <Card sx={{ maxWidth: 200, maxHeight: 500, mt: 1.5, mb: 1.5, bgcolor: 'primary.main' }}>
       <CardHeader
@@ -61,21 +63,33 @@ export default function MediaCard({ media }: { media: Media }) {
         </Grid>
       </CardContent>
       <CardActions disableSpacing>
-      
-        <Link href={`/watch/${media.id}`}>
-          <Button variant="contained" size="small" startIcon={<PlayIcon />} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: .5,mb: 1, pl: 3.5, pr: 3.5}}>
-            View
-          </Button>
-        </Link>
-        <IconButton size="small" aria-label={`Delete ${media.title}`} onClick={() => setDeleteDialogOpen(true)} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: 2.5, mb: 1, mr: .5}}>
-          <DeleteIcon />
-        </IconButton>
-        
+        <Grid container>
+          <Grid>
+            <Link href={`/watch/${media.id}`}>
+              <Button variant="contained" size="small" startIcon={<PlayIcon />} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: .5, mr: .5, mb: 1, pl: 7.5, pr: 7.5}}>
+                View
+              </Button>
+            </Link>
+          </Grid>
+          <Grid container size='grow' sx={{justifyContent: 'space-evenly'}}>
+            <Button variant="contained" size="small" startIcon={<EditIcon />} aria-label={`Edit ${media.title}`} onClick={() => setEditDialogOpen(true)} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: .5, mr: .5, mb: 1, pl: 1.3, pr: 1.3}}>
+              Edit
+            </Button>
+            <Button variant="contained" size="small" startIcon={<DeleteIcon />} aria-label={`Delete ${media.title}`} onClick={() => setDeleteDialogOpen(true)} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: .5, mr: .5, mb: 1, pl: 1.5, pr: 1.25}}>
+              Delete
+            </Button>
+          </Grid>
+        </Grid>
       </CardActions>
       <DeleteMediaDialog
         open={deleteDialogOpen}
         media={media}
         onClose={() => setDeleteDialogOpen(false)}
+      />
+      <EditMediaDialog
+        open={editDialogOpen}
+        media={media}
+        onClose={() => setEditDialogOpen(false)}
       />
     </Card>
   );
