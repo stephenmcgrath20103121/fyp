@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(fyp_server VERSION 1.0 LANGUAGES CXX)
+project(mediaroot_server VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,5 +13,5 @@ target_link_libraries(${PROJECT_NAME}
     Poco::Util 
     Poco::Foundation 
     Poco::JSON
-    SQLite3::SQLite3
+    sqlite3
 )
