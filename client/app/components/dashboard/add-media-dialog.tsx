@@ -47,7 +47,7 @@ export default function UploadDialog({ open, onClose }: Props) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0] ?? null;
         setFile(f);
-        // Pre-fill title from the filename's basename if untouched
+        //Use filename as title if unset by user
         if (f && !title) {
             setTitle(f.name.replace(/\.[^/.]+$/, ''));
         }

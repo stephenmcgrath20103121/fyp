@@ -29,10 +29,10 @@ Open a terminal and navigate to the project folder, then to the directory server
 
 `cmake --build build --parallel`
 
-The server binary will be located in the subdirectory build/ , named "mediaroot_server". Move this binary to any folder you desire on your device, for example Documents. To execute it, navigate to the chosen directory in a terminal and type "./mediaroot_server". The server will now be listening on http://localhost:8080/ . To shut down the server, input the key combination "ctrl + c" in the terminal you used to start it. 
+The server binary will be located in the subdirectory build/ , named "mediaroot_server". Move this binary to any folder you desire on your device, for example Documents. To execute it, navigate to the chosen directory in a terminal and type "./mediaroot_server". The server will now be listening both on http://localhost:8080/ and port 8080 of your device's IP address on your local network. To shut down the server, input the key combination "ctrl + c" in the terminal you used to start it. 
 
 #### Client
-Open a terminal and navigate to the project folder, then to the directory client/. Run the following commands: 
+Open a terminal and navigate to the project folder, then to the directory client/. Create the file ".env.local" and enter the line "NEXT_PUBLIC_MEDIA_API=***chosen server address***", replacing ***chosen server address*** with either the localhost or local network address for the server. This information is outputted in the terminal you started the server in. Save it, then run the following commands: 
 
 `pnpm install`
 

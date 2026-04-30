@@ -7,6 +7,7 @@
 #include <Poco/Net/HTMLForm.h>
 #include <Poco/Net/PartHandler.h>
 #include <Poco/Net/MessageHeader.h>
+#include <Poco/Net/NetworkInterface.h>
 #include <Poco/Util/ServerApplication.h>
 #include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
@@ -832,6 +833,32 @@ public:
 };
 
 // ===========================================================================
+// Detect the primary IPv4 address on the LAN.
+// Skips loopback (127.x), wildcard, and link-local (169.254.x) autoconf addrs.
+// ===========================================================================
+static std::string detectLANAddress() {
+    using Poco::Net::NetworkInterface;
+    using Poco::Net::IPAddress;
+
+    try {
+        // Defaults: only interfaces that are up and have at least one IP.
+        for (const auto& iface : NetworkInterface::list()) {
+            if (iface.isLoopback()) continue;
+            for (const auto& tuple : iface.addressList()) {
+                const IPAddress& addr = tuple.get<0>();
+                if (addr.family() != IPAddress::IPv4) continue;
+                if (addr.isLoopback() || addr.isWildcard()) continue;
+                // Skip 169.254.x.x (link-local / DHCP failure addresses)
+                std::string s = addr.toString();
+                if (s.rfind("169.254.", 0) == 0) continue;
+                return s;
+            }
+        }
+    } catch (...) {}
+    return "";
+};
+
+// ===========================================================================
 // Application
 // ===========================================================================
 class MediaServerApp : public ServerApplication {
@@ -860,13 +887,26 @@ protected:
         HTTPServer server(new MediaHandlerFactory(), socket, params);
         server.start();
 
+        const std::string lanIP = detectLANAddress();
+
         std::cout
-            << "\n=== Media Center listening on http://localhost:"
-            << PORT << " ===\n\n"
-            << "Endpoints:\n"
+            << "\n=== Media Center listening on port " << PORT << " ===\n"
+            << "  localhost:       http://localhost:" << PORT << "\n";
+        if (!lanIP.empty()) {
+            std::cout
+                << "  on this network: http://" << lanIP << ":" << PORT << "\n"
+                << "\n  → On the client, set in .env.local:\n"
+                << "    NEXT_PUBLIC_MEDIA_API=http://" << lanIP << ":" << PORT << "\n";
+        } else {
+            std::cout
+                << "  (could not auto-detect a LAN IPv4 address)\n";
+        }
+
+        std::cout
+            << "\nEndpoints:\n"
             << "  POST   /api/media               "
-               "multipart/form-data: file=<binary>, "
-               "media_type=<video|audio|image>, title=<optional>\n"
+            "multipart/form-data: file=<binary>, "
+            "media_type=<video|audio|image>, title=<optional>\n"
             << "  GET    /api/media               list all\n"
             << "  GET    /api/media/{id}          detail\n"
             << "  PUT    /api/media/{id}          body: {\"title\":\"...\"}\n"
