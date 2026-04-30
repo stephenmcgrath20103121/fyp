@@ -3,7 +3,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import FormControl from "@mui/material/FormControl";
 import OutlinedInput from '@mui/material/OutlinedInput';
 import InputAdornment from '@mui/material/InputAdornment';
-import Spinner from '@/app/components/dashboard/spinner';
 
 export default function Search() {
   return(

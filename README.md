@@ -51,20 +51,19 @@ The client is a Next.js + React web app. It uses TypeScript, ESLint, React Compi
 - @emotion/styled 
 - @emotion/server
 - @emotion/cache 
-- hls.js 
+- HLS.js 
 - @mui/material 
 - @mui/material-nextjs 
 - @mui/icons-material
 - plyr 
 - @tanstack/react-query
 - @tanstack/react-query-devtools 
-- @tanstack/eslint-plugin-query
 
 
 
 By default it runs on http://localhost:3000/. Users can add media as an absolute path from the directory of the server, which gets displayed in the Library section of the dashboard. The View button streams an added video file, the Edit button allows the user to change the displayed Title and the Delete button removes the media from the server's database, along with all related cache files, playlist files and thumbnails. 
 
-As this is a work in progress, not all interface items have had their functionality added yet. Currently, the media type buttons in the side menu do not function: all media is shown. In addition, the favourites icon and categories section of the media cards, the settings icon on the dashboard and the search bar do not have any functionality attached and are merely placeholders. 
+As this is a work in progress, not all interface items have had their functionality added yet. Currently, the media type buttons in the side menu do not function: all media is shown. In addition, the favorites icon and categories section of the media cards, the settings icon on the dashboard and the search bar do not have any functionality attached and are merely placeholders. 
 
 #### Server
 The server is a REST server made in C++, along with FFmpeg and the POCO libraries. It is compiled with CMake. It provides an API to the client and uses a SQLite database for data storage. By default, it runs on http://localhost:8080/.

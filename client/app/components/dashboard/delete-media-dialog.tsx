@@ -38,7 +38,7 @@ export default function DeleteMediaDialog({ open, media, onClose }: Props) {
       <DialogTitle>Delete media?</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          This will only remove <strong>{media.title}</strong> and all associated data from your Library. Your original file will not be affected.
+          This will delete <strong>{media.title}</strong> and all associated data from your Library. Are you sure you want to proceed with this?. 
         </DialogContentText>
         {deleteMutation.isError && (
           <Alert severity="error" sx={{ mt: 2, bgcolor: 'error.main', color: 'text.primary' }}>

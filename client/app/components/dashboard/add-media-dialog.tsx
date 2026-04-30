@@ -1,102 +1,112 @@
-'use client'
+'use client';
 import * as React from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import DialogContentText from '@mui/material/DialogContentText';
-import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
-import Alert from '@mui/material/Alert';
-import { useCreateMedia } from '@/app/hooks/useCreateMedia';
+import TextField from '@mui/material/TextField';
+import LinearProgress from '@mui/material/LinearProgress';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { uploadMedia } from '@/app/api/mediaroot-server-api';
 
 type Props = {
-  open: boolean;
-  onClose: () => void;
+    open: boolean;
+    onClose: () => void;
 };
 
-export default function AddMediaDialog({ open, onClose }: Props) {
-  const [filePath, setFilePath] = React.useState('');
-  const [title, setTitle] = React.useState('');
-  const createMedia = useCreateMedia();
+export default function UploadDialog({ open, onClose }: Props) {
+    const [file, setFile]         = React.useState<File | null>(null);
+    const [title, setTitle]       = React.useState('');
+    const [progress, setProgress] = React.useState<number | null>(null);
+    const queryClient             = useQueryClient();
 
-  //Reset dialog when reopened
-  React.useEffect(() => {
-    if (open) {
-      setFilePath('');
-      setTitle('');
-      createMedia.reset();
-    }
-  }, [open]);
+    const mutation = useMutation({
+        mutationFn: () => {
+            if (!file) throw new Error('No file selected');
+            setProgress(0);
+            return uploadMedia(file, title || undefined, setProgress);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['media'] });
+            handleClose();
+        },
+    });
 
-  const handleClose = () => {
-    if (createMedia.isPending) return; //only close if media has been added
-    onClose();
-  };
+    const handleClose = () => {
+        if (mutation.isPending) return;
+        setFile(null);
+        setTitle('');
+        setProgress(null);
+        mutation.reset();
+        onClose();
+    };
 
-  const handleSubmit = () => {
-    const trimmedPath = filePath.trim();
-    if (!trimmedPath) return;
-    const trimmedTitle = title.trim();
-    createMedia.mutate(
-      { filePath: trimmedPath, title: trimmedTitle || undefined },
-      { onSuccess: () => onClose() },
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0] ?? null;
+        setFile(f);
+        // Pre-fill title from the filename's basename if untouched
+        if (f && !title) {
+            setTitle(f.name.replace(/\.[^/.]+$/, ''));
+        }
+    };
+
+    return (
+        <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+            <DialogTitle>Add Media</DialogTitle>
+            <DialogContent>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                    <Button
+                        variant="outlined"
+                        component="label"
+                        disabled={mutation.isPending}
+                        sx={{ textTransform: 'none' }}
+                    >
+                        {file ? file.name : 'Choose file…'}
+                        <input
+                            hidden
+                            type="file"
+                            accept="video/*"
+                            onChange={handleFileChange}
+                        />
+                    </Button>
+
+                    <TextField
+                        label="Title (optional)"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        disabled={mutation.isPending}
+                        fullWidth
+                    />
+
+                    {progress !== null && (
+                        <Box>
+                            <LinearProgress variant="determinate" value={progress} />
+                            <Typography variant="caption">{progress}%</Typography>
+                        </Box>
+                    )}
+
+                    {mutation.isError && (
+                        <Typography color="error" variant="body2">
+                            {(mutation.error as Error).message}
+                        </Typography>
+                    )}
+                </Box>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={handleClose} disabled={mutation.isPending}>
+                    Cancel
+                </Button>
+                <Button
+                    variant="contained"
+                    disabled={!file || mutation.isPending}
+                    onClick={() => mutation.mutate()}
+                >
+                    {mutation.isPending ? 'Uploading…' : 'Upload'}
+                </Button>
+            </DialogActions>
+        </Dialog>
     );
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && filePath.trim() && !createMedia.isPending) {
-      handleSubmit();
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle>Add Media</DialogTitle>
-      <DialogContent>
-        <DialogContentText sx={{ mb: 2 }}>
-          Enter the absolute path to a media file on the server.
-        </DialogContentText>
-        <TextField
-          autoFocus
-          fullWidth
-          required
-          margin="dense"
-          label="File path"
-          placeholder="/path/to/video.mp4"
-          value={filePath}
-          onChange={(e) => setFilePath(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={createMedia.isPending}
-        />
-        <TextField
-          fullWidth
-          margin="dense"
-          label="Title (optional)"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={createMedia.isPending}
-        />
-        {createMedia.isError && (
-          <Alert severity="error" sx={{ mt: 2, bgcolor: 'error.main', color: 'text.primary' }}>
-            {createMedia.error.message}
-          </Alert>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={createMedia.isPending}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={!filePath.trim() || createMedia.isPending}
-          sx={{ bgcolor: 'secondary.main', color: 'primary.contrastText' }}
-        >
-          {createMedia.isPending ? 'Importing…' : 'Add'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
 }

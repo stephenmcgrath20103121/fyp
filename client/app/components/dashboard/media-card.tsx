@@ -21,7 +21,7 @@ import { secsToMins } from '@/app/lib/utils';
 import { getThumbnailUrl } from '@/app/api/mediaroot-server-api';
 import DeleteMediaDialog from '@/app/components/dashboard/delete-media-dialog';
 import EditMediaDialog from '@/app/components/dashboard/edit-media-dialog';
-import img from '../../../public/placeholder.png';
+import img from '../../../public/placeholder.svg';
 
 export default function MediaCard({ media }: { media: Media }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
@@ -44,7 +44,7 @@ export default function MediaCard({ media }: { media: Media }) {
 
       <CardMedia
         sx={{ width: 150, height: 150, ml: 3, mr: 3, mb: .5, border: 'solid', borderColor: 'tertiary.main', borderRadius: 1 }}
-        image={media.thumbnail_path ? getThumbnailUrl(media.id) : 'file.svg'}
+        image={media.thumbnail_path ? getThumbnailUrl(media.id) : img}
       />
       <CardContent sx={{bgcolor: 'tertiary.light'}} >
         <Grid container sx={{bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 2, pl: 1, pr: 1, pt: .5}}>

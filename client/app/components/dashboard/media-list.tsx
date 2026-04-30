@@ -10,22 +10,13 @@ import Spinner from '@/app/components/dashboard/spinner';
 import { useMedia } from '@/app/hooks/useMedia';
 
 export default function MediaList() {
-  const [selectedIndex, setSelectedIndex] = React.useState(1);
-
-  const handleListItemClick = (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    index: number,
-  ) => {
-    setSelectedIndex(index);
-  };
-
   const { data, error, isLoading, isError }  = useMedia();
 
   if (isLoading) { return <Spinner /> }
   if (isError) { return <Typography sx={{color: 'error.main'}}>{error.message}</Typography> }
   if (!data) { return null }
 
-  let mediaCards = data.map((m) => (
+  const mediaCards = data.map((m) => (
     <MediaCard key={m.id} media={m} />
   ));
 

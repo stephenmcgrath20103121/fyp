@@ -38,19 +38,56 @@ export async function getMediaById(id: number): Promise<Media> {
 }
 
 //POST /api/media
-export async function createMedia(filePath: string, title?: string): Promise<Media> {
-  return jsonRequest<Media>(
-    '/api/media',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        file_path: filePath,
-        ...(title !== undefined ? { title } : {}),
-      }),
-    },
-    'Failed to import media',
-  );
+export async function uploadMedia(
+    file: File,
+    title?: string,
+    onProgress?: (pct: number) => void,
+): Promise<Media> {
+    const url = `${process.env.NEXT_PUBLIC_MEDIA_API}/api/media`;
+
+    const fd = new FormData();
+    fd.append('file', file);
+    if (title) fd.append('title', title);
+
+    // Pick a media_type from the browser-provided MIME prefix.
+    // Server currently only accepts "video"; the others are forward-compat.
+    const mediaType = file.type.startsWith('audio/') ? 'audio'
+                    : file.type.startsWith('image/') ? 'image'
+                    : 'video';
+    fd.append('media_type', mediaType);
+
+    return new Promise<Media>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url);
+
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable && onProgress) {
+                onProgress(Math.round((e.loaded / e.total) * 100));
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch {
+                    reject(new Error('Invalid response from server'));
+                }
+            } else {
+                let msg = `Upload failed (${xhr.status})`;
+                try {
+                    const body = JSON.parse(xhr.responseText);
+                    if (body?.error) msg = body.error;
+                } catch { /* keep default */ }
+                reject(new Error(msg));
+            }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.onabort = () => reject(new Error('Upload aborted'));
+
+        xhr.send(fd);
+    });
 }
 
 //PUT /api/media/{id}
