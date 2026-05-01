@@ -3,11 +3,7 @@ import * as React from 'react';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import ForestIcon from '@mui/icons-material/Forest';
-import HomeIcon from '@mui/icons-material/Home';
-import SettingsIcon from '@mui/icons-material/Settings';
-import IconButton from "@mui/material/IconButton";
 import Avatar from '@mui/material/Avatar';
-import Link from "next/link";
 
 export default function Options() {
   return (
@@ -20,18 +16,6 @@ export default function Options() {
       <Typography component ="h4" variant="h4" gutterBottom sx={{pt:1, color: 'text.primary'}}>
         MediaRoot
       </Typography>
-      </Grid>
-      <Grid container spacing={1} sx={{mt: 2, mb: 2}}>
-        <Link href={`/`}>
-          <IconButton sx={{width: 48, height: 48, bgcolor: "secondary.main", color: "primary.contrastText", m: 1}}>
-            <HomeIcon sx={{width: 32, height: 32, color: 'video.contrastText'}} />
-          </IconButton>
-        </Link>
-        <Link href={`/media/1`}>
-          <IconButton sx={{width: 48, height: 48, bgcolor: "secondary.main", color: "primary.contrastText", m: 1}}>
-            <SettingsIcon sx={{width: 32, height: 32, color: 'video.contrastText'}} />
-          </IconButton>
-        </Link>
       </Grid>
     </Grid>
     </Grid>

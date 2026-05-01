@@ -296,8 +296,14 @@ static bool validateMediaType(const MediaMeta& meta, const std::string& type) {
         return !meta.videoCodec.empty() && meta.duration > 0.0;
     }
     if (type == "audio") {
-        // Audio: has an audio codec and no video stream.
-        return !meta.audioCodec.empty() && meta.videoCodec.empty();
+        // Audio: has an audio codec. A video stream is permitted only if it's
+        // a still image — embedded cover art (MP3 ID3 APIC, FLAC PICTURE, etc.)
+        // surfaces as an mjpeg/png "video" stream alongside the real audio.
+        if (meta.audioCodec.empty()) return false;
+        if (!meta.videoCodec.empty() && kImageCodecs.count(meta.videoCodec) == 0) {
+            return false;
+        }
+        return true;
     }
     if (type == "image") {
         // Must have a recognised image codec.
@@ -320,28 +326,118 @@ static bool validateMediaType(const MediaMeta& meta, const std::string& type) {
 
 // ===========================================================================
 // Thumbnail generation
+//
+// Each media type has its own ffmpeg invocation, because they extract
+// thumbnails from fundamentally different things:
+//   - video: seek into a timeline, grab a frame
+//   - image: take the only frame, no seek
+//   - audio: extract the attached cover-art stream, no timeline
+//
+// Failure expectations differ too — audio without cover art is normal and
+// silent, while video failing to produce a frame indicates a real problem.
 // ===========================================================================
-static std::string generateThumbnail(int mediaId, const std::string& filePath,
-                                     double durationSecs) {
+
+namespace {
+
+// Common output path and ffmpeg invocation. Returns the output path on
+// success, or "" on failure.
+std::string runThumbnailFfmpeg(int mediaId, const std::vector<std::string>& args,
+                               const char* tag, bool logOnMiss) {
+    std::string outPath = THUMB_DIR + "/" + std::to_string(mediaId) + ".jpg";
+
     Poco::File dir(THUMB_DIR);
     if (!dir.exists()) dir.createDirectories();
 
-    std::string outPath = THUMB_DIR + "/" + std::to_string(mediaId) + ".jpg";
-    double seekTo = (durationSecs > 1.0) ? durationSecs * 0.1 : 0.0;
-
-    std::vector<std::string> args = {
-        "-y", "-ss", std::to_string(seekTo),
-        "-i", filePath,
-        "-frames:v", "1",
-        "-vf", "scale=320:-1",
-        outPath
-    };
-
     Poco::Pipe outPipe;
     auto ph = Poco::Process::launch("ffmpeg", args, nullptr, &outPipe, &outPipe);
-    Poco::Process::wait(ph);
+    int rc = Poco::Process::wait(ph);
+
+    if (rc != 0) {
+        std::cerr << "[thumbnail:" << tag << "] ffmpeg exited with code "
+                  << rc << " for media " << mediaId << "\n";
+    }
 
     if (Poco::File(outPath).exists()) return outPath;
+
+    if (logOnMiss) {
+        std::cerr << "[thumbnail:" << tag << "] No output produced for media "
+                  << mediaId << "\n";
+    }
+    return "";
+}
+
+// Build the args vector for a given input/output combination, with a custom
+// pre-input section for media-type-specific options.
+std::vector<std::string> buildArgs(const std::string& filePath,
+                                   const std::string& outPath,
+                                   const std::vector<std::string>& preInput,
+                                   const std::vector<std::string>& postInput) {
+    std::vector<std::string> args = { "-y" };
+    args.insert(args.end(), preInput.begin(), preInput.end());
+    args.push_back("-i");
+    args.push_back(filePath);
+    args.insert(args.end(), postInput.begin(), postInput.end());
+    args.push_back("-vf");
+    args.push_back("scale=320:-1");
+    args.push_back(outPath);
+    return args;
+}
+
+} // anonymous namespace
+
+// --- Video: seek to ~10% in, grab a frame -------------------------------
+static std::string thumbVideo(int mediaId, const std::string& filePath,
+                              double durationSecs) {
+    std::string outPath = THUMB_DIR + "/" + std::to_string(mediaId) + ".jpg";
+
+    std::vector<std::string> preInput;
+    if (durationSecs > 1.0) {
+        preInput.push_back("-ss");
+        preInput.push_back(std::to_string(durationSecs * 0.1));
+    }
+
+    std::vector<std::string> postInput = { "-frames:v", "1" };
+
+    auto args = buildArgs(filePath, outPath, preInput, postInput);
+    return runThumbnailFfmpeg(mediaId, args, "video", /*logOnMiss=*/true);
+}
+
+// --- Image: take the only frame, no seek --------------------------------
+static std::string thumbImage(int mediaId, const std::string& filePath) {
+    std::string outPath = THUMB_DIR + "/" + std::to_string(mediaId) + ".jpg";
+
+    std::vector<std::string> preInput;   // no seek for static images
+    std::vector<std::string> postInput = { "-frames:v", "1" };
+
+    auto args = buildArgs(filePath, outPath, preInput, postInput);
+    return runThumbnailFfmpeg(mediaId, args, "image", /*logOnMiss=*/true);
+}
+
+// --- Audio: extract attached cover art if present ------------------------
+// "-map 0:v?" picks the first video stream (i.e. the embedded picture);
+// the trailing "?" makes its absence non-fatal so files without cover art
+// don't error out — they just produce no thumbnail.
+static std::string thumbAudioCover(int mediaId, const std::string& filePath) {
+    std::string outPath = THUMB_DIR + "/" + std::to_string(mediaId) + ".jpg";
+
+    std::vector<std::string> preInput;   // no seek; cover art has no timeline
+    std::vector<std::string> postInput = {
+        "-map", "0:v?",
+        "-frames:v", "1"
+    };
+
+    auto args = buildArgs(filePath, outPath, preInput, postInput);
+    // logOnMiss=false: audio without cover art is normal, not an error.
+    return runThumbnailFfmpeg(mediaId, args, "audio-cover", /*logOnMiss=*/false);
+}
+
+// --- Dispatch by media type ---------------------------------------------
+static std::string generateThumbnail(int mediaId, const std::string& filePath,
+                                     const std::string& mediaType,
+                                     double durationSecs) {
+    if (mediaType == "video") return thumbVideo(mediaId, filePath, durationSecs);
+    if (mediaType == "image") return thumbImage(mediaId, filePath);
+    if (mediaType == "audio") return thumbAudioCover(mediaId, filePath);
     return "";
 }
 
@@ -851,7 +947,7 @@ public:
 
                 // ----- Thumbnail -----
                 std::string thumbPath =
-                    generateThumbnail(newId, filePath, meta.duration);
+                    generateThumbnail(newId, filePath, mediaType, meta.duration);
                 if (!thumbPath.empty()) {
                     std::lock_guard<std::mutex> lock(g_db.mutex());
                     const char* upd =

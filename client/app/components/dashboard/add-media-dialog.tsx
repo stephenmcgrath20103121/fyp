@@ -102,7 +102,7 @@ export default function UploadDialog({ open, onClose }: Props) {
                 <Button
                     variant="contained"
                     disabled={!file || mutation.isPending}
-                    onClick={() => mutation.mutate()}
+                    onClick={() => { mutation.mutate(); handleClose();}}
                 >
                     {mutation.isPending ? 'Uploading…' : 'Upload'}
                 </Button>

@@ -19,7 +19,7 @@ import { secsToMins } from '@/app/lib/utils';
 import { thumbnailUrl } from '@/app/api/mediaroot-server-api';
 import DeleteMediaDialog from '@/app/components/dashboard/delete-media-dialog';
 import EditMediaDialog from '@/app/components/dashboard/edit-media-dialog';
-import img from '@/public/placeholder.svg';
+import placeholder from '@/public/placeholder.svg';
 
 function viewerPathFor(mediaType: string, id: number): string {
   switch (mediaType) {
@@ -41,18 +41,20 @@ export default function MediaCard({ media }: { media: Media }) {
             {media.title}{" "}
           </Typography>
         }
-        sx={{ maxHeight: 140, color: 'tertiary.contrastText'}}
+        sx={{ height: 140, color: 'tertiary.contrastText'}}
       />
 
       <CardMedia
-        sx={{ width: 150, height: 150, ml: 3, mr: 3, mb: .5, border: 'solid', borderColor: 'tertiary.main', borderRadius: 1 }}
-        image={media.thumbnail_path ? thumbnailUrl(media.id, media.added_at) : img}
+        component="img"
+        src={media.thumbnail_path ? thumbnailUrl(media.id, media.added_at) : placeholder.src}
+        onError={(e) => { (e.currentTarget as HTMLImageElement).src = placeholder.src; }}
+        sx={{ width: 150, height: 150, ml: 3, mr: 3, mb: .5, border: 'solid', borderColor: 'tertiary.main', borderRadius: 1, objectFit: 'cover' }}
       />
       <CardContent sx={{bgcolor: 'tertiary.light'}} >
         <Grid container sx={{bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 2, pl: 1, pr: 1, pt: .5}}>
           {media.media_type !== 'image' && (
           <Grid size={{xs: 8}} sx={{mb:1}}>
-            <Typography variant="body1" component="p" sx={{fontSize: 14}}>
+            <Typography variant="body1" component="p" sx={{fontSize: 12}}>
               <TimerIcon sx={{maxWidth: 14, maxHeight: 14, mr: .5, mb: .5}} />
               {secsToMins(media.duration_secs)}
             </Typography>
