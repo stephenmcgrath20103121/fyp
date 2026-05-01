@@ -7,9 +7,23 @@ import Avatar from "@mui/material/Avatar";
 import Image from 'next/image';
 import img from '@/public/albumArtPlaceholder.svg';
 import { audioStreamUrl } from "@/app/api/mediaroot-server-api";
+import { Media } from "@/app/types/index"
+import { redirect } from "next/navigation";
 
 export default async function ListenPage({ params }: { params: { id: string } }) {
+  const base = process.env.NEXT_PUBLIC_MEDIA_API ?? "http://localhost:8080";
   const { id } = await params;
+
+  let media: Media | null = null;
+  try {
+    const res = await fetch(`${base}/api/media/${id}`, { cache: 'no-store' });
+    if (res.ok) media = await res.json();
+  } catch {}
+
+  if (!media) redirect('/');
+  if (media.media_type === 'video') redirect(`/watch/${id}`);
+  if (media.media_type === 'image') redirect(`/view/${id}`);
+
   return (
     <main>
       <Grid container spacing={1} sx={{ justifyContent: 'space-between', mt: 1, mb: 1, ml: 2, mr: 2 }}>

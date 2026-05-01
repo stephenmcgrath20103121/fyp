@@ -5,6 +5,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import Link from "next/link";
 import { imageUrl } from "@/app/api/mediaroot-server-api";
 import { Media } from "@/app/types";
+import { redirect } from "next/navigation";
 
 export default async function ViewPage({ params }: { params: { id: string } }) {
   const base = process.env.NEXT_PUBLIC_MEDIA_API ?? "http://localhost:8080";
@@ -15,6 +16,10 @@ export default async function ViewPage({ params }: { params: { id: string } }) {
     const res = await fetch(`${base}/api/media/${id}`, { cache: 'no-store' });
     if (res.ok) media = await res.json();
   } catch {}
+
+  if (!media) redirect('/');
+  if (media.media_type === 'video') redirect(`/watch/${id}`);
+  if (media.media_type === 'audio') redirect(`/listen/${id}`);
 
   return (
     <main>
@@ -28,7 +33,7 @@ export default async function ViewPage({ params }: { params: { id: string } }) {
       <Grid container sx={{ ml: 2, mr: 2, mb: 1, mt: 1, border: 'solid', borderColor: 'secondary.main', borderRadius: 1 }}>
         <Grid size='grow'>
           <ImageViewer
-            src={imageUrl(id, media?.added_at)}
+            src={imageUrl(id, media.added_at)}
             media={media}
           />
         </Grid>

@@ -21,6 +21,15 @@ import DeleteMediaDialog from '@/app/components/dashboard/delete-media-dialog';
 import EditMediaDialog from '@/app/components/dashboard/edit-media-dialog';
 import img from '@/public/placeholder.svg';
 
+function viewerPathFor(mediaType: string, id: number): string {
+  switch (mediaType) {
+    case 'audio': return `/listen/${id}`;
+    case 'image': return `/view/${id}`;
+    case 'video':
+    default:      return `/watch/${id}`;
+  }
+}
+
 export default function MediaCard({ media }: { media: Media }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
@@ -41,24 +50,20 @@ export default function MediaCard({ media }: { media: Media }) {
       />
       <CardContent sx={{bgcolor: 'tertiary.light'}} >
         <Grid container sx={{bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 2, pl: 1, pr: 1, pt: .5}}>
+          {media.media_type !== 'image' && (
           <Grid size={{xs: 8}} sx={{mb:1}}>
             <Typography variant="body1" component="p" sx={{fontSize: 14}}>
               <TimerIcon sx={{maxWidth: 14, maxHeight: 14, mr: .5, mb: .5}} />
               {secsToMins(media.duration_secs)}
             </Typography>
           </Grid>
-          <Grid size={{xs: 8}} sx={{mb:1}}>
-            <Typography variant="body1" component="p" sx={{fontSize: 14}}>
-              <FolderIcon sx={{maxWidth: 14, maxHeight: 14, mr: .5, mb: .5}} />
-              Categories: 
-            </Typography>
-          </Grid>
+          )}
         </Grid>
       </CardContent>
       <CardActions disableSpacing>
         <Grid container>
           <Grid>
-            <Link href={`/view/${media.id}`}>
+            <Link href={viewerPathFor(media.media_type, media.id)}>
               <Button variant="contained" size="small" startIcon={<PlayIcon />} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: .5, mr: .5, mb: 1, pl: 7.5, pr: 7.5}}>
                 View
               </Button>

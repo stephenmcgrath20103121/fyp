@@ -15,77 +15,59 @@ import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
 import AddIcon from '@mui/icons-material/Add';
 import AddMediaDialog from '@/app/components/dashboard/add-media-dialog';
+import { MediaTypeFilter } from '@/app/page';
 
-export default function SideMenu() {
-  const [selectedIndex, setSelectedIndex] = React.useState(0);
+type Props = {
+  selectedType: MediaTypeFilter;
+  onSelectType: (t: MediaTypeFilter) => void;
+};
+
+const entries: {
+  type: MediaTypeFilter;
+  label: string;
+  Icon: React.ElementType;
+  paletteKey: 'video' | 'music' | 'image';
+}[] = [
+  { type: 'video', label: 'Videos', Icon: VideoIcon, paletteKey: 'video' },
+  { type: 'audio', label: 'Music',  Icon: MusicIcon, paletteKey: 'music' },
+  { type: 'image', label: 'Images', Icon: ImageIcon, paletteKey: 'image' },
+];
+
+export default function SideMenu({ selectedType, onSelectType }: Props) {
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
 
-  const handleListItemClick = (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-    index: number,
-  ) => {
-    setSelectedIndex(index);
-  };
-  
   return (
-    <Grid sx={{ maxWidth: 350, bgcolor: 'background.paper', p: 1, borderRadius: 3}}>
-      <Grid container sx={{justifyContent: 'space-between', ml: .5, mr: .5}}>
-      <Typography component ="h5" variant="h5" gutterBottom sx={{pl:2, pt:1, pb:.5}}>
-        Library
-      </Typography>
-      <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: 2, mr: 2, mt: 1, mb: 1, pl: 7, pr: 7}}>
-        Add
-      </Button>
+    <Grid sx={{ maxWidth: 350, bgcolor: 'background.paper', p: 1, borderRadius: 3 }}>
+      <Grid container sx={{ justifyContent: 'space-between', ml: .5, mr: .5 }}>
+        <Typography component="h5" variant="h5" gutterBottom sx={{ pl: 2, pt: 1, pb: .5 }}>
+          Library
+        </Typography>
+        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)} sx={{ bgcolor: "secondary.main", color: "primary.contrastText", ml: 2, mr: 2, mt: 1, mb: 1, pl: 7, pr: 7 }}>
+          Add
+        </Button>
       </Grid>
       <Grid sx={{ maxWidth: 300, bgcolor: 'primary.main', margin: 2, borderRadius: 2 }}>
-      <nav aria-label="media types">
-        <List>
-          <ListItem  alignItems="flex-start">
-            <ListItemButton 
-              sx={{ maxWidth: 300, bgcolor: 'primary.main', '&:hover': {bgcolor: 'video.light'}, color: 'video.contrastText', borderRadius: 2 }}
-              selected={selectedIndex === 0}
-              onClick={(event) => handleListItemClick(event, 0)}
-            >
-              <ListItemAvatar>
-                <Avatar sx={{bgcolor: 'video.main'}}>
-                  <VideoIcon sx={{color: 'video.contrastText'}} />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText primary="Videos" />
-            </ListItemButton>
-          </ListItem>
-          <Divider aria-hidden="true" variant="middle" component="li" sx={{color: 'divider'}} />
-          <ListItem alignItems="flex-start">
-            <ListItemButton 
-              sx={{ width: '100%', maxWidth: 300, bgcolor: 'primary.main', '&:hover': {bgcolor: 'music.light'}, color: 'music.contrastText', borderRadius: 2 }}
-              selected={selectedIndex === 1}
-              onClick={(event) => handleListItemClick(event, 1)}
-            >
-              <ListItemAvatar>
-                <Avatar sx={{bgcolor: 'music.main'}}>
-                  <MusicIcon sx={{color: 'music.contrastText'}} />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText primary="Music" />
-            </ListItemButton>
-          </ListItem>
-          <Divider aria-hidden="true" variant="middle" component="li" sx={{color: 'divider'}} />
-          <ListItem alignItems="flex-start">
-            <ListItemButton 
-              sx={{ width: '100%', maxWidth: 300, bgcolor: 'primary.main', '&:hover': {bgcolor: 'image.light'}, color: 'image.contrastText', borderRadius: 2 }}
-              selected={selectedIndex === 2}
-              onClick={(event) => handleListItemClick(event, 2)}
-            >
-              <ListItemAvatar>
-                <Avatar sx={{bgcolor: 'image.main'}}>
-                  <ImageIcon sx={{color: 'image.contrastText'}} />
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText primary="Images" />
-            </ListItemButton>
-          </ListItem>
-        </List>
-      </nav>
+        <nav aria-label="media types">
+          <List>
+            {entries.map(({ type, label, Icon, paletteKey }, idx) => (
+              <React.Fragment key={type}>
+                <ListItem alignItems="flex-start">
+                  <ListItemButton selected={selectedType === type} onClick={() => onSelectType(type)} sx={{ width: '100%', maxWidth: 300, bgcolor: 'primary.main', '&:hover': { bgcolor: `${paletteKey}.light` }, color: `${paletteKey}.contrastText`, borderRadius: 2,}}>
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: `${paletteKey}.main` }}>
+                        <Icon sx={{ color: `${paletteKey}.contrastText` }} />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText primary={label} />
+                  </ListItemButton>
+                </ListItem>
+                {idx < entries.length - 1 && (
+                  <Divider aria-hidden="true" variant="middle" component="li" sx={{ color: 'divider' }} />
+                )}
+              </React.Fragment>
+            ))}
+          </List>
+        </nav>
       </Grid>
       <AddMediaDialog
         open={addDialogOpen}

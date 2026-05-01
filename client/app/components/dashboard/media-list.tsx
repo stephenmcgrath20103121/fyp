@@ -8,15 +8,22 @@ import Search from '@/app/components/dashboard/search';
 import MediaCard from "@/app/components/dashboard/media-card";
 import Spinner from '@/app/components/dashboard/spinner';
 import { useMedia } from '@/app/hooks/useMedia';
+import { MediaTypeFilter } from '@/app/page';
 
-export default function MediaList() {
+type Props = {
+  selectedType: MediaTypeFilter;
+};
+
+export default function MediaList({ selectedType }: Props) {
   const { data, error, isLoading, isError }  = useMedia();
 
   if (isLoading) { return <Spinner /> }
   if (isError) { return <Typography sx={{color: 'error.main'}}>{error.message}</Typography> }
   if (!data) { return null }
 
-  const mediaCards = data.map((m) => (
+  const filtered = data.filter((m) => m.media_type === selectedType);
+
+  const mediaCards = filtered.map((m) => (
     <MediaCard key={m.id} media={m} />
   ));
 
@@ -34,9 +41,13 @@ export default function MediaList() {
         </IconButton>
       </Grid>
       <Grid sx={{ bgcolor: 'tertiary.main', margin: 'auto', borderRadius: 2 }}>
-      <Grid container sx={{justifyContent: "space-evenly", alignItems: "flex-start",}}>
-        {mediaCards}
-      </Grid>
+        <Grid container sx={{justifyContent: "space-evenly", alignItems: "flex-start",}}>
+          {mediaCards.length > 0 ? mediaCards : (
+            <Typography sx={{ p: 4, color: 'text.primary' }}>
+              No {selectedType} media in your Library yet.
+            </Typography>
+          )}
+        </Grid>
       </Grid>
     </Grid>
   );

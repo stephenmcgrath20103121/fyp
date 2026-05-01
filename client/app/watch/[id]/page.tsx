@@ -5,19 +5,21 @@ import HomeIcon from '@mui/icons-material/Home';
 import Link from "next/link";
 import { getStreamPlaylistUrl, thumbnailUrl } from '@/app/api/mediaroot-server-api';
 import { Media } from '@/app/types/index';
+import { redirect } from "next/navigation";
 
 export default async function WatchPage({ params }: { params: { id: string } }) {
   const base = process.env.NEXT_PUBLIC_MEDIA_API ?? "http://localhost:8080";
   const { id } = await params
 
-  let addedAt: string | undefined;
+  let media: Media | null = null;
   try {
     const res = await fetch(`${base}/api/media/${id}`, { cache: 'no-store' });
-    if (res.ok) {
-      const m: Media = await res.json();
-      addedAt = m.added_at;
-    }
+    if (res.ok) media = await res.json();
   } catch {}
+
+  if (!media) redirect('/');
+  if (media.media_type === 'audio') redirect(`/listen/${id}`);
+  if (media.media_type === 'image') redirect(`/view/${id}`);
 
   return (
     <main>
@@ -32,7 +34,7 @@ export default async function WatchPage({ params }: { params: { id: string } }) 
         <Grid size='grow'>
           <VideoPlayer
             src={getStreamPlaylistUrl(id)}
-            poster={thumbnailUrl(id, addedAt)}
+            poster={thumbnailUrl(id, media.added_at)}
             storageKey={`media:${id}`}
           />
         </Grid>
