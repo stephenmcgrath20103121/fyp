@@ -11,8 +11,8 @@ export default async function WatchPage({ params }: { params: { id: string } }) 
     <main>
       <Grid container spacing={1} sx={{justifyContent: 'space-between', mt: 1, mb: 1, ml: 2, mr: 2}}>
         <Link href={`/`}>
-          <IconButton sx={{width: 32, height: 32, bgcolor: "secondary.main", color: "primary.contrastText", m: .5}}>
-            <HomeIcon sx={{width: 24, height: 24, color: 'video.contrastText'}} />
+          <IconButton sx={{width: 48, height: 48, bgcolor: "secondary.main", color: "primary.contrastText", m: .5}}>
+            <HomeIcon sx={{width: 36, height: 36, color: 'video.contrastText'}} />
           </IconButton>
         </Link>
       </Grid>

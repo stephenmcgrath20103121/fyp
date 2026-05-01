@@ -123,6 +123,14 @@ export function getStreamSegmentUrl(id: number | string, segment: string): strin
   return `${API_BASE}/api/media/${id}/stream/${segment}`;
 }
 
+export function videoStreamUrl(id: number | string): string {
+    return `${API_BASE}/api/media/${id}/stream/playlist.m3u8`;
+}
+
+export function audioStreamUrl(id: number | string): string {
+    return `${API_BASE}/api/media/${id}/audio/playlist.m3u8`;
+}
+
 //GET /api/media/{id}/thumbnail
 export function getThumbnailUrl(id: number | string): string {
   return `${API_BASE}/api/media/${id}/thumbnail`;

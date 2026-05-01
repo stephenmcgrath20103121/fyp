@@ -7,7 +7,6 @@ import CardMedia from "@mui/material/CardMedia";
 import CardHeader from "@mui/material/CardHeader";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-import FavoriteIcon from "@mui/icons-material/Favorite";
 import FolderIcon from "@mui/icons-material/Folder";
 import TimerIcon from "@mui/icons-material/Timer";
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -15,13 +14,12 @@ import EditIcon from '@mui/icons-material/Edit';
 import PlayIcon from '@mui/icons-material/PlayCircle';
 import Grid from "@mui/material/Grid";
 import Link from "next/link";
-import Avatar from '@mui/material/Avatar';
 import { Media } from '@/app/types/index';
 import { secsToMins } from '@/app/lib/utils';
 import { getThumbnailUrl } from '@/app/api/mediaroot-server-api';
 import DeleteMediaDialog from '@/app/components/dashboard/delete-media-dialog';
 import EditMediaDialog from '@/app/components/dashboard/edit-media-dialog';
-import img from '../../../public/placeholder.svg';
+import img from '@/public/placeholder.svg';
 
 export default function MediaCard({ media }: { media: Media }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
@@ -29,17 +27,12 @@ export default function MediaCard({ media }: { media: Media }) {
   return (
     <Card sx={{ maxWidth: 200, maxHeight: 500, mt: 1.5, mb: 1.5, bgcolor: 'primary.main' }}>
       <CardHeader
-        avatar={
-            <Avatar sx={{ backgroundColor: 'lightcoral', maxWidth: 28, maxHeight: 28 }}>
-              <FavoriteIcon sx={{color: 'primary.contrastText', maxWidth: 18, maxHeight: 18}} />
-            </Avatar>
-        }
         title={
-          <Typography variant="h6" component="p" sx={{ color: 'primary.contrastText', maxWidth: 225, mt:1 }}>
+          <Typography variant="h6" component="p" sx={{ color: 'primary.contrastText', maxWidth: 250, mt:1 }}>
             {media.title}{" "}
           </Typography>
         }
-        sx={{ maxHeight: 75, color: 'tertiary.contrastText'}}
+        sx={{ maxHeight: 140, color: 'tertiary.contrastText'}}
       />
 
       <CardMedia

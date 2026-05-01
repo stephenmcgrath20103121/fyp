@@ -68,7 +68,7 @@ export default function UploadDialog({ open, onClose }: Props) {
                         <input
                             hidden
                             type="file"
-                            accept="video/*"
+                            accept="video/*,audio/*"
                             onChange={handleFileChange}
                         />
                     </Button>

@@ -43,6 +43,7 @@ using namespace Poco::JSON;
 static const unsigned short PORT      = 8080;
 static const std::string    DB_PATH   = "mediacenter.db";
 static const std::string    HLS_DIR   = "hls_cache";
+static const std::string    HLS_AUDIO_DIR = "hls_audio_cache";
 static const std::string    THUMB_DIR = "thumbnails";
 static const std::string    UPLOAD_DIR = "uploads";
 
@@ -350,6 +351,66 @@ static bool ensureHLS(int mediaId, const std::string& filePath) {
 }
 
 // ===========================================================================
+// On-demand audio HLS transcoding
+// ===========================================================================
+static std::map<int, std::mutex> g_hlsAudioLocks;
+static std::mutex g_hlsAudioMapMtx;
+
+static std::string audioHlsDirForMedia(int id) {
+    return HLS_AUDIO_DIR + "/" + std::to_string(id);
+}
+
+static bool ensureHLSAudio(int mediaId, const std::string& filePath) {
+    std::string dir  = audioHlsDirForMedia(mediaId);
+    std::string m3u8 = dir + "/playlist.m3u8";
+
+    if (Poco::File(m3u8).exists()) return true;
+
+    std::mutex* mtx;
+    {
+        std::lock_guard<std::mutex> g(g_hlsAudioMapMtx);
+        mtx = &g_hlsAudioLocks[mediaId];
+    }
+    std::lock_guard<std::mutex> lock(*mtx);
+
+    if (Poco::File(m3u8).exists()) return true;
+
+    Poco::File(dir).createDirectories();
+
+    std::string segPattern = dir + "/segment%04d.ts";
+
+    std::vector<std::string> args = {
+        "-y",
+        "-i", filePath,
+        "-vn",                              // drop any embedded cover art
+        "-c:a", "aac", "-b:a", "192k",
+        "-f", "hls",
+        "-hls_time", "10",
+        "-hls_list_size", "0",
+        "-hls_segment_filename", segPattern,
+        m3u8
+    };
+
+    std::cout << "[hls-audio] Transcoding media " << mediaId << " ...\n";
+
+    Poco::Pipe outPipe;
+    auto ph = Poco::Process::launch("ffmpeg", args, nullptr, &outPipe, &outPipe);
+
+    for (int i = 0; i < 300; ++i) {
+        if (Poco::File(m3u8).exists()) {
+            std::cout << "[hls-audio] Playlist ready for media " << mediaId << "\n";
+            return true;
+        }
+        Poco::Thread::sleep(100);
+    }
+
+    std::cerr << "[hls-audio] Timeout waiting for playlist (media "
+              << mediaId << ")\n";
+    try { Poco::Process::kill(ph); } catch (...) {}
+    return false;
+}
+
+// ===========================================================================
 // Startup orphan sweep — removes upload files not referenced by the DB.
 // ===========================================================================
 static void sweepOrphanUploads() {
@@ -610,6 +671,60 @@ public:
         }
 
         // =================================================================
+        // GET /api/media/{id}/audio/playlist.m3u8 or segment.ts
+        // =================================================================
+        static const std::regex rxAudioStream(R"(/api/media/(\d+)/audio/(.*))");
+        std::smatch smA;
+        if (method == "GET" && std::regex_match(uri, smA, rxAudioStream)) {
+            int id = std::stoi(smA[1].str());
+            std::string file = smA[2].str();
+
+            std::string filePath, mediaType;
+            {
+                std::lock_guard<std::mutex> lock(g_db.mutex());
+                sqlite3_stmt* stmt;
+                sqlite3_prepare_v2(g_db.handle(),
+                    "SELECT file_path, media_type FROM media WHERE id = ?;",
+                    -1, &stmt, nullptr);
+                sqlite3_bind_int(stmt, 1, id);
+                if (sqlite3_step(stmt) == SQLITE_ROW) {
+                    filePath  = reinterpret_cast<const char*>(
+                                   sqlite3_column_text(stmt, 0));
+                    mediaType = reinterpret_cast<const char*>(
+                                   sqlite3_column_text(stmt, 1));
+                }
+                sqlite3_finalize(stmt);
+            }
+
+            if (filePath.empty()) {
+                sendJSON(resp, 404, R"({"error":"media not found"})");
+                return;
+            }
+            if (mediaType != "audio") {
+                sendJSON(resp, 400, R"({"error":"item is not audio"})");
+                return;
+            }
+
+            if (!ensureHLSAudio(id, filePath)) {
+                sendJSON(resp, 500, R"({"error":"audio transcoding failed"})");
+                return;
+            }
+
+            if (file.find("..") != std::string::npos ||
+                file.find('/')  != std::string::npos) {
+                sendJSON(resp, 403, R"({"error":"forbidden"})");
+                return;
+            }
+
+            std::string fullPath = audioHlsDirForMedia(id) + "/" + file;
+            std::string mime = (file.find(".m3u8") != std::string::npos)
+                ? "application/vnd.apple.mpegurl"
+                : "video/MP2T";   // .ts segments carry MPEG-TS even when audio-only
+            serveFile(resp, fullPath, mime);
+            return;
+        }
+
+        // =================================================================
         // GET /api/media/{id}/stream/playlist.m3u8 or segment.ts
         // =================================================================
         static const std::regex rxStream(R"(/api/media/(\d+)/stream/(.*))");
@@ -618,23 +733,30 @@ public:
             int id = std::stoi(sm[1].str());
             std::string file = sm[2].str();
 
-            std::string filePath;
+            std::string filePath, mediaType;
             {
                 std::lock_guard<std::mutex> lock(g_db.mutex());
                 sqlite3_stmt* stmt;
                 sqlite3_prepare_v2(g_db.handle(),
-                    "SELECT file_path FROM media WHERE id = ?;",
+                    "SELECT file_path, media_type FROM media WHERE id = ?;",
                     -1, &stmt, nullptr);
                 sqlite3_bind_int(stmt, 1, id);
                 if (sqlite3_step(stmt) == SQLITE_ROW) {
                     filePath = reinterpret_cast<const char*>(
                         sqlite3_column_text(stmt, 0));
+                    mediaType = reinterpret_cast<const char*>(
+                           sqlite3_column_text(stmt, 1));
                 }
                 sqlite3_finalize(stmt);
             }
 
             if (filePath.empty()) {
                 sendJSON(resp, 404, R"({"error":"media not found"})");
+                return;
+            }
+
+            if (mediaType != "video") {
+                sendJSON(resp, 400, R"({"error":"item is not video"})");
                 return;
             }
 
@@ -800,6 +922,11 @@ public:
                         if (f.exists()) f.remove();
                     } catch (...) {}
                 }
+                // Audio HLS cache
+                try {
+                    Poco::File audioHlsDir(audioHlsDirForMedia(id));
+                    if (audioHlsDir.exists()) audioHlsDir.remove(true);
+                } catch (...) {}
                 // HLS cache
                 try {
                     Poco::File hlsDir(hlsDirForMedia(id));
@@ -873,6 +1000,7 @@ protected:
 
         // Make sure runtime directories exist
         try { Poco::File(UPLOAD_DIR).createDirectories(); } catch (...) {}
+        try { Poco::File(HLS_AUDIO_DIR).createDirectories(); } catch (...) {}
         try { Poco::File(HLS_DIR).createDirectories();    } catch (...) {}
         try { Poco::File(THUMB_DIR).createDirectories();  } catch (...) {}
 
@@ -911,6 +1039,7 @@ protected:
             << "  GET    /api/media/{id}          detail\n"
             << "  PUT    /api/media/{id}          body: {\"title\":\"...\"}\n"
             << "  DELETE /api/media/{id}\n"
+            << "  GET    /api/media/{id}/audio/playlist.m3u8\n"
             << "  GET    /api/media/{id}/stream/playlist.m3u8\n"
             << "  GET    /api/media/{id}/thumbnail\n\n"
             << "Press Ctrl+C to stop.\n";
