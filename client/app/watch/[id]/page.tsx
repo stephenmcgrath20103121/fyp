@@ -3,10 +3,22 @@ import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton"
 import HomeIcon from '@mui/icons-material/Home';
 import Link from "next/link";
-import { getStreamPlaylistUrl, getThumbnailUrl } from '@/app/api/mediaroot-server-api';
+import { getStreamPlaylistUrl, thumbnailUrl } from '@/app/api/mediaroot-server-api';
+import { Media } from '@/app/types/index';
 
 export default async function WatchPage({ params }: { params: { id: string } }) {
+  const base = process.env.NEXT_PUBLIC_MEDIA_API ?? "http://localhost:8080";
   const { id } = await params
+
+  let addedAt: string | undefined;
+  try {
+    const res = await fetch(`${base}/api/media/${id}`, { cache: 'no-store' });
+    if (res.ok) {
+      const m: Media = await res.json();
+      addedAt = m.added_at;
+    }
+  } catch {}
+
   return (
     <main>
       <Grid container spacing={1} sx={{justifyContent: 'space-between', mt: 1, mb: 1, ml: 2, mr: 2}}>
@@ -20,7 +32,7 @@ export default async function WatchPage({ params }: { params: { id: string } }) 
         <Grid size='grow'>
           <VideoPlayer
             src={getStreamPlaylistUrl(id)}
-            poster={getThumbnailUrl(id)}
+            poster={thumbnailUrl(id, addedAt)}
             storageKey={`media:${id}`}
           />
         </Grid>

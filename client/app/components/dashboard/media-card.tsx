@@ -16,7 +16,7 @@ import Grid from "@mui/material/Grid";
 import Link from "next/link";
 import { Media } from '@/app/types/index';
 import { secsToMins } from '@/app/lib/utils';
-import { getThumbnailUrl } from '@/app/api/mediaroot-server-api';
+import { thumbnailUrl } from '@/app/api/mediaroot-server-api';
 import DeleteMediaDialog from '@/app/components/dashboard/delete-media-dialog';
 import EditMediaDialog from '@/app/components/dashboard/edit-media-dialog';
 import img from '@/public/placeholder.svg';
@@ -37,7 +37,7 @@ export default function MediaCard({ media }: { media: Media }) {
 
       <CardMedia
         sx={{ width: 150, height: 150, ml: 3, mr: 3, mb: .5, border: 'solid', borderColor: 'tertiary.main', borderRadius: 1 }}
-        image={media.thumbnail_path ? getThumbnailUrl(media.id) : img}
+        image={media.thumbnail_path ? thumbnailUrl(media.id, media.added_at) : img}
       />
       <CardContent sx={{bgcolor: 'tertiary.light'}} >
         <Grid container sx={{bgcolor: 'primary.main', color: 'primary.contrastText', borderRadius: 2, pl: 1, pr: 1, pt: .5}}>
@@ -58,7 +58,7 @@ export default function MediaCard({ media }: { media: Media }) {
       <CardActions disableSpacing>
         <Grid container>
           <Grid>
-            <Link href={`/watch/${media.id}`}>
+            <Link href={`/view/${media.id}`}>
               <Button variant="contained" size="small" startIcon={<PlayIcon />} sx={{bgcolor: "secondary.main", color: "primary.contrastText", ml: .5, mr: .5, mb: 1, pl: 7.5, pr: 7.5}}>
                 View
               </Button>

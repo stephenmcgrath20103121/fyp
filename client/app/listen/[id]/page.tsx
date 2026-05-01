@@ -6,9 +6,9 @@ import Link from "next/link";
 import Avatar from "@mui/material/Avatar";
 import Image from 'next/image';
 import img from '@/public/albumArtPlaceholder.svg';
+import { audioStreamUrl } from "@/app/api/mediaroot-server-api";
 
 export default async function ListenPage({ params }: { params: { id: string } }) {
-  const base = process.env.NEXT_PUBLIC_MEDIA_API ?? "http://localhost:8080";
   const { id } = await params;
   return (
     <main>
@@ -31,7 +31,7 @@ export default async function ListenPage({ params }: { params: { id: string } })
         </Grid>
         <Grid container size='grow'  sx={{justifyContent: 'center', p: 1}}>
           <AudioPlayer
-            src={`${base}/api/media/${id}/audio/playlist.m3u8`}
+            src={audioStreamUrl(id)}
             storageKey={`media:${id}`}
           />
         </Grid>

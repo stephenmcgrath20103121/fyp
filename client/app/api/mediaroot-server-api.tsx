@@ -49,8 +49,6 @@ export async function uploadMedia(
     fd.append('file', file);
     if (title) fd.append('title', title);
 
-    // Pick a media_type from the browser-provided MIME prefix.
-    // Server currently only accepts "video"; the others are forward-compat.
     const mediaType = file.type.startsWith('audio/') ? 'audio'
                     : file.type.startsWith('image/') ? 'image'
                     : 'video';
@@ -78,7 +76,7 @@ export async function uploadMedia(
                 try {
                     const body = JSON.parse(xhr.responseText);
                     if (body?.error) msg = body.error;
-                } catch { /* keep default */ }
+                } catch {}
                 reject(new Error(msg));
             }
         };
@@ -123,15 +121,23 @@ export function getStreamSegmentUrl(id: number | string, segment: string): strin
   return `${API_BASE}/api/media/${id}/stream/${segment}`;
 }
 
-export function videoStreamUrl(id: number | string): string {
-    return `${API_BASE}/api/media/${id}/stream/playlist.m3u8`;
-}
-
+//GET /api/media/{id}/audio/playlist.m3u8
 export function audioStreamUrl(id: number | string): string {
     return `${API_BASE}/api/media/${id}/audio/playlist.m3u8`;
 }
 
-//GET /api/media/{id}/thumbnail
-export function getThumbnailUrl(id: number | string): string {
-  return `${API_BASE}/api/media/${id}/thumbnail`;
+export function imageUrl(id: number | string, version?: string | Date): string {
+    const v = encodeVersion(version);
+    return `${API_BASE}/api/media/${id}/image${v}`;
+}
+
+export function thumbnailUrl(id: number | string, version?: string | Date): string {
+    const v = encodeVersion(version);
+    return `${API_BASE}/api/media/${id}/thumbnail${v}`;
+}
+
+function encodeVersion(version?: string | Date): string {
+    if (!version) return '';
+    const s = version instanceof Date ? version.toISOString() : String(version);
+    return `?v=${encodeURIComponent(s)}`;
 }

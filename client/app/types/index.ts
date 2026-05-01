@@ -10,5 +10,5 @@ export type Media = {
     video_codec: string;
     audio_codec: string;
     thumbnail_path: string;
-    added_at: Date;
+    added_at: string;
 };

@@ -31,7 +31,7 @@
 #include <set>
 #include <mutex>
 #include <regex>
-#include <cstdlib>
+#include <algorithm>
 
 using namespace Poco::Net;
 using namespace Poco::Util;
@@ -44,6 +44,7 @@ static const unsigned short PORT      = 8080;
 static const std::string    DB_PATH   = "mediacenter.db";
 static const std::string    HLS_DIR   = "hls_cache";
 static const std::string    HLS_AUDIO_DIR = "hls_audio_cache";
+static const std::string    IMAGE_CACHE_DIR = "image_cache";
 static const std::string    THUMB_DIR = "thumbnails";
 static const std::string    UPLOAD_DIR = "uploads";
 
@@ -181,6 +182,7 @@ struct MediaMeta {
     int         height     = 0;
     std::string videoCodec;
     std::string audioCodec;
+    std::string formatName;
     bool        probeOk    = false;
 };
 
@@ -216,6 +218,7 @@ static MediaMeta probeFile(const std::string& path) {
             auto fmt = root->getObject("format");
             if (fmt->has("duration"))
                 m.duration = std::stod(fmt->getValue<std::string>("duration"));
+            m.formatName = fmt->optValue<std::string>("format_name", "");
         }
 
         if (root->has("streams")) {
@@ -243,14 +246,53 @@ static MediaMeta probeFile(const std::string& path) {
 
 // ===========================================================================
 // Type validation — does this file match the requested media_type?
-// Extend the audio/image branches as those types are added.
 // ===========================================================================
+
+// Codecs ffprobe reports for image streams. HEVC and AV1 also appear here
+// because HEIC and AVIF are encoded with those codecs; the audio + container
+// checks in validateMediaType disambiguate them from real H.265 / AV1 video.
+static const std::set<std::string> kImageCodecs = {
+    "mjpeg",        // JPEG
+    "png",
+    "gif",
+    "webp",
+    "bmp",
+    "tiff",
+    "hevc",         // HEIC (also H.265 video — disambiguated below)
+    "av1",          // AVIF (also AV1 video — disambiguated below)
+    "jpeg2000",
+    "jpegxl"
+};
+
+// Container format_name fragments that indicate an image-only container.
+// ffprobe reports format_name as a comma-separated list of aliases, so we
+// substring-match.
+static bool isImageContainer(const std::string& formatName) {
+    static const std::vector<std::string> imageFormats = {
+        "image2", "png_pipe", "webp_pipe", "jpeg_pipe",
+        "gif", "bmp_pipe", "tiff_pipe", "jpegxl_pipe"
+    };
+    for (const auto& f : imageFormats) {
+        if (formatName.find(f) != std::string::npos) return true;
+    }
+    return false;
+}
+
+// HEIC and AVIF live in MP4-family containers. These containers can also
+// hold real video, so they're only treated as image when there's no audio.
+static bool isHeifContainer(const std::string& formatName) {
+    return formatName.find("mov,mp4") != std::string::npos
+        || formatName.find("mp4")     != std::string::npos
+        || formatName.find("heif")    != std::string::npos
+        || formatName.find("heic")    != std::string::npos
+        || formatName.find("avif")    != std::string::npos;
+}
+
 static bool validateMediaType(const MediaMeta& meta, const std::string& type) {
     if (!meta.probeOk) return false;
 
     if (type == "video") {
         // Real video: has a video codec and a non-trivial duration.
-        // (Still images often present as a video stream with duration ~0.)
         return !meta.videoCodec.empty() && meta.duration > 0.0;
     }
     if (type == "audio") {
@@ -258,8 +300,20 @@ static bool validateMediaType(const MediaMeta& meta, const std::string& type) {
         return !meta.audioCodec.empty() && meta.videoCodec.empty();
     }
     if (type == "image") {
-        // Image: ffprobe sees a single video stream, ~0 duration.
-        return !meta.videoCodec.empty() && meta.duration == 0.0;
+        // Must have a recognised image codec.
+        if (kImageCodecs.count(meta.videoCodec) == 0) return false;
+        // Must have no audio stream (rules out music videos with cover art
+        // misidentified, or H.265 video with audio).
+        if (!meta.audioCodec.empty()) return false;
+        // For HEVC / AV1, additionally require an image-style container
+        // (HEIF/MP4-family). Other image codecs are unambiguous.
+        if (meta.videoCodec == "hevc" || meta.videoCodec == "av1") {
+            return isHeifContainer(meta.formatName);
+        }
+        // For other image codecs, accept either a known image container or
+        // (defensively) just trust the codec — `mjpeg` etc. only appear in
+        // image contexts in practice for files this server would ingest.
+        return isImageContainer(meta.formatName) || true;
     }
     return false;
 }
@@ -411,24 +465,92 @@ static bool ensureHLSAudio(int mediaId, const std::string& filePath) {
 }
 
 // ===========================================================================
-// Startup orphan sweep — removes upload files not referenced by the DB.
+// Startup orphan sweep
+//   - uploads/                  keyed by file_path (DB column)
+//   - hls_cache/<id>/           keyed by media id (subdirectory name)
+//   - hls_audio_cache/<id>/     keyed by media id (subdirectory name)
+//   - thumbnails/<id>.jpg       keyed by media id (filename stem)
+//   - image_cache/<id>.jpg      keyed by media id (filename stem)
 // ===========================================================================
-static void sweepOrphanUploads() {
-    Poco::File uploads(UPLOAD_DIR);
-    if (!uploads.exists()) return;
 
-    std::set<std::string> known;
-    {
-        std::lock_guard<std::mutex> lock(g_db.mutex());
-        sqlite3_stmt* stmt;
-        sqlite3_prepare_v2(g_db.handle(),
-            "SELECT file_path FROM media;", -1, &stmt, nullptr);
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            auto p = sqlite3_column_text(stmt, 0);
-            if (p) known.insert(reinterpret_cast<const char*>(p));
+// Strip the extension from a filename, e.g. "42.jpg" -> "42".
+static std::string stripExtension(const std::string& filename) {
+    size_t dot = filename.find_last_of('.');
+    return (dot == std::string::npos) ? filename : filename.substr(0, dot);
+}
+
+// Try to parse a string as a positive int. Returns -1 if not a clean integer.
+static int parseIdOrNeg1(const std::string& s) {
+    if (s.empty()) return -1;
+    for (char c : s) if (!std::isdigit(static_cast<unsigned char>(c))) return -1;
+    try { return std::stoi(s); } catch (...) { return -1; }
+}
+
+// Sweep a directory of "<id>.<ext>" files. Removes entries whose id is not
+// in `knownIds`, or whose name doesn't parse as an integer at all.
+static int sweepIdNamedFiles(const std::string& dirPath,
+                             const std::set<int>& knownIds,
+                             const char* tag) {
+    Poco::File dir(dirPath);
+    if (!dir.exists()) return 0;
+
+    std::vector<Poco::File> entries;
+    dir.list(entries);
+
+    int removed = 0;
+    for (auto& f : entries) {
+        if (!f.isFile()) continue;
+        std::string name = Poco::Path(f.path()).getFileName();
+        int id = parseIdOrNeg1(stripExtension(name));
+        if (id < 0 || knownIds.find(id) == knownIds.end()) {
+            try {
+                f.remove();
+                ++removed;
+                std::cout << "[sweep:" << tag << "] Removed orphan: "
+                          << f.path() << "\n";
+            } catch (const std::exception& e) {
+                std::cerr << "[sweep:" << tag << "] Failed to remove "
+                          << f.path() << ": " << e.what() << "\n";
+            }
         }
-        sqlite3_finalize(stmt);
     }
+    return removed;
+}
+
+// Sweep a directory of "<id>/" subdirectories. Removes whole subtrees whose
+// id is not in `knownIds`, or whose name doesn't parse as an integer.
+static int sweepIdNamedDirs(const std::string& dirPath,
+                            const std::set<int>& knownIds,
+                            const char* tag) {
+    Poco::File dir(dirPath);
+    if (!dir.exists()) return 0;
+
+    std::vector<Poco::File> entries;
+    dir.list(entries);
+
+    int removed = 0;
+    for (auto& f : entries) {
+        if (!f.isDirectory()) continue;
+        std::string name = Poco::Path(f.path()).getFileName();
+        int id = parseIdOrNeg1(name);
+        if (id < 0 || knownIds.find(id) == knownIds.end()) {
+            try {
+                f.remove(true);   // recursive
+                ++removed;
+                std::cout << "[sweep:" << tag << "] Removed orphan: "
+                          << f.path() << "\n";
+            } catch (const std::exception& e) {
+                std::cerr << "[sweep:" << tag << "] Failed to remove "
+                          << f.path() << ": " << e.what() << "\n";
+            }
+        }
+    }
+    return removed;
+}
+
+static int sweepOrphanUploads(const std::set<std::string>& knownPaths) {
+    Poco::File uploads(UPLOAD_DIR);
+    if (!uploads.exists()) return 0;
 
     std::vector<Poco::File> entries;
     uploads.list(entries);
@@ -436,19 +558,48 @@ static void sweepOrphanUploads() {
     int removed = 0;
     for (auto& f : entries) {
         if (!f.isFile()) continue;
-        if (known.find(f.path()) == known.end()) {
+        if (knownPaths.find(f.path()) == knownPaths.end()) {
             try {
                 f.remove();
                 ++removed;
-                std::cout << "[sweep] Removed orphan: " << f.path() << "\n";
+                std::cout << "[sweep:uploads] Removed orphan: "
+                          << f.path() << "\n";
             } catch (const std::exception& e) {
-                std::cerr << "[sweep] Failed to remove " << f.path()
-                          << ": " << e.what() << "\n";
+                std::cerr << "[sweep:uploads] Failed to remove "
+                          << f.path() << ": " << e.what() << "\n";
             }
         }
     }
-    std::cout << "[sweep] " << removed << " orphan file(s) removed; "
-              << known.size() << " tracked in DB.\n";
+    return removed;
+}
+
+// Top-level — runs all five sweeps against a single DB snapshot.
+static void sweepOrphans() {
+    std::set<std::string> knownPaths;
+    std::set<int>         knownIds;
+
+    {
+        std::lock_guard<std::mutex> lock(g_db.mutex());
+        sqlite3_stmt* stmt;
+        sqlite3_prepare_v2(g_db.handle(),
+            "SELECT id, file_path FROM media;", -1, &stmt, nullptr);
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            knownIds.insert(sqlite3_column_int(stmt, 0));
+            auto p = sqlite3_column_text(stmt, 1);
+            if (p) knownPaths.insert(reinterpret_cast<const char*>(p));
+        }
+        sqlite3_finalize(stmt);
+    }
+
+    int total = 0;
+    total += sweepOrphanUploads(knownPaths);
+    total += sweepIdNamedDirs (HLS_DIR,         knownIds, "hls");
+    total += sweepIdNamedDirs (HLS_AUDIO_DIR,   knownIds, "hls-audio");
+    total += sweepIdNamedFiles(THUMB_DIR,       knownIds, "thumbnails");
+    total += sweepIdNamedFiles(IMAGE_CACHE_DIR, knownIds, "image-cache");
+
+    std::cout << "[sweep] " << total << " orphan entry/entries removed; "
+              << knownIds.size() << " media row(s) in DB.\n";
 }
 
 // ===========================================================================
@@ -458,11 +609,14 @@ static void sendJSON(HTTPServerResponse& resp, int status, const std::string& bo
     resp.setStatus(static_cast<HTTPResponse::HTTPStatus>(status));
     resp.setContentType("application/json");
     resp.set("Access-Control-Allow-Origin", "*");
+    resp.set("Cross-Origin-Resource-Policy", "cross-origin");
+    resp.set("Cache-Control", "no-cache, must-revalidate");
     resp.sendBuffer(body.data(), body.size());
 }
 
 static void serveFile(HTTPServerResponse& resp, const std::string& path,
-                      const std::string& mime) {
+                      const std::string& mime,
+                      const std::string& cacheControl = "no-cache, no-store") {
     Poco::File f(path);
     if (!f.exists()) {
         sendJSON(resp, 404, R"({"error":"file not found"})");
@@ -471,7 +625,8 @@ static void serveFile(HTTPServerResponse& resp, const std::string& path,
     resp.setStatus(HTTPResponse::HTTP_OK);
     resp.setContentType(mime);
     resp.set("Access-Control-Allow-Origin", "*");
-    resp.set("Cache-Control", "no-cache, no-store");
+    resp.set("Cross-Origin-Resource-Policy", "cross-origin");
+    resp.set("Cache-Control", cacheControl);
     resp.setContentLength64(f.getSize());
     std::ifstream ifs(path, std::ios::binary);
     Poco::StreamCopier::copyStream(ifs, resp.send());
@@ -481,6 +636,91 @@ static int extractId(const std::string& uri, const std::string& prefix) {
     try {
         return std::stoi(uri.substr(prefix.size()));
     } catch (...) { return -1; }
+}
+
+// ===========================================================================
+// Map a file extension to an image MIME type. Returns "" if unknown.
+// ===========================================================================
+static std::string imageMimeForPath(const std::string& path) {
+    std::string ext = Poco::Path(path).getExtension();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    if (ext == "jpg" || ext == "jpeg") return "image/jpeg";
+    if (ext == "png")                  return "image/png";
+    if (ext == "gif")                  return "image/gif";
+    if (ext == "webp")                 return "image/webp";
+    if (ext == "bmp")                  return "image/bmp";
+    if (ext == "tif" || ext == "tiff") return "image/tiff";
+    if (ext == "avif")                 return "image/avif";
+    if (ext == "heic")                 return "image/heic";
+    if (ext == "svg")                  return "image/svg+xml";
+    return "";
+}
+
+// ===========================================================================
+// Image transcoding — convert formats browsers don't render natively (HEIC,
+// TIFF) to JPEG, cached on disk. Native formats are passed through.
+// ===========================================================================
+static std::map<int, std::mutex> g_imageLocks;
+static std::mutex g_imageMapMtx;
+
+static bool isBrowserNativeImage(const std::string& extLower) {
+    return extLower == "jpg"  || extLower == "jpeg" || extLower == "png"
+        || extLower == "gif"  || extLower == "webp" || extLower == "avif"
+        || extLower == "bmp"  || extLower == "svg";
+}
+
+// Returns a path that's safe to serve to a browser. For native formats this
+// is the original upload; otherwise it's a cached JPEG conversion.
+// Sets outMime accordingly. Returns "" on conversion failure.
+static std::string ensureServeableImage(int id, const std::string& filePath,
+                                        std::string& outMime) {
+    std::string ext = Poco::Path(filePath).getExtension();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    if (isBrowserNativeImage(ext)) {
+        outMime = imageMimeForPath(filePath);
+        if (outMime.empty()) outMime = "application/octet-stream";
+        return filePath;
+    }
+
+    // Convert — cached as JPEG keyed by media id.
+    std::string cachedPath = IMAGE_CACHE_DIR + "/" + std::to_string(id) + ".jpg";
+    outMime = "image/jpeg";
+
+    if (Poco::File(cachedPath).exists()) return cachedPath;
+
+    std::mutex* mtx;
+    {
+        std::lock_guard<std::mutex> g(g_imageMapMtx);
+        mtx = &g_imageLocks[id];
+    }
+    std::lock_guard<std::mutex> lock(*mtx);
+
+    // Re-check after acquiring lock.
+    if (Poco::File(cachedPath).exists()) return cachedPath;
+
+    try { Poco::File(IMAGE_CACHE_DIR).createDirectories(); } catch (...) {}
+
+    std::vector<std::string> args = {
+        "-y",
+        "-i", filePath,
+        "-q:v", "2",            // visually transparent JPEG quality
+        cachedPath
+    };
+
+    std::cout << "[image] Transcoding media " << id << " (" << ext
+              << " -> jpg) ...\n";
+
+    Poco::Pipe outPipe;
+    auto ph = Poco::Process::launch("ffmpeg", args, nullptr, &outPipe, &outPipe);
+    int rc = Poco::Process::wait(ph);
+
+    if (rc != 0 || !Poco::File(cachedPath).exists()) {
+        std::cerr << "[image] Conversion failed for media " << id << "\n";
+        return "";
+    }
+    return cachedPath;
 }
 
 static std::string mediaRowToJSON(sqlite3_stmt* stmt) {
@@ -531,6 +771,7 @@ public:
             resp.set("Access-Control-Allow-Origin", "*");
             resp.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
             resp.set("Access-Control-Allow-Headers", "Content-Type");
+            resp.set("Cross-Origin-Resource-Policy", "cross-origin");
             resp.send();
             return;
         }
@@ -782,7 +1023,7 @@ public:
         // =================================================================
         // GET /api/media/{id}/thumbnail
         // =================================================================
-        static const std::regex rxThumb(R"(/api/media/(\d+)/thumbnail)");
+        static const std::regex rxThumb(R"(/api/media/(\d+)/thumbnail(?:\?.*)?)");
         if (method == "GET" && std::regex_match(uri, sm, rxThumb)) {
             int id = std::stoi(sm[1].str());
             std::string thumbPath;
@@ -803,7 +1044,53 @@ public:
                 sendJSON(resp, 404, R"({"error":"thumbnail not available"})");
                 return;
             }
-            serveFile(resp, thumbPath, "image/jpeg");
+            serveFile(resp, thumbPath, "image/jpeg",
+                      "public, max-age=3600, must-revalidate");
+            return;
+        }
+
+        // =================================================================
+        // GET /api/media/{id}/image  — serve original or transcoded image
+        // =================================================================
+        static const std::regex rxImage(R"(/api/media/(\d+)/image(?:\?.*)?)");
+        if (method == "GET" && std::regex_match(uri, sm, rxImage)) {
+            int id = std::stoi(sm[1].str());
+
+            std::string filePath, mediaType;
+            {
+                std::lock_guard<std::mutex> lock(g_db.mutex());
+                sqlite3_stmt* stmt;
+                sqlite3_prepare_v2(g_db.handle(),
+                    "SELECT file_path, media_type FROM media WHERE id = ?;",
+                    -1, &stmt, nullptr);
+                sqlite3_bind_int(stmt, 1, id);
+                if (sqlite3_step(stmt) == SQLITE_ROW) {
+                    filePath  = reinterpret_cast<const char*>(
+                                   sqlite3_column_text(stmt, 0));
+                    mediaType = reinterpret_cast<const char*>(
+                                   sqlite3_column_text(stmt, 1));
+                }
+                sqlite3_finalize(stmt);
+            }
+
+            if (filePath.empty()) {
+                sendJSON(resp, 404, R"({"error":"media not found"})");
+                return;
+            }
+            if (mediaType != "image") {
+                sendJSON(resp, 400, R"({"error":"item is not image"})");
+                return;
+            }
+
+            std::string mime;
+            std::string serveablePath = ensureServeableImage(id, filePath, mime);
+            if (serveablePath.empty()) {
+                sendJSON(resp, 500, R"({"error":"image conversion failed"})");
+                return;
+            }
+
+            serveFile(resp, serveablePath, mime,
+                      "public, max-age=3600, must-revalidate");
             return;
         }
 
@@ -922,6 +1209,11 @@ public:
                         if (f.exists()) f.remove();
                     } catch (...) {}
                 }
+                // Image conversion cache
+                try {
+                    Poco::File imgCache(IMAGE_CACHE_DIR + "/" + std::to_string(id) + ".jpg");
+                    if (imgCache.exists()) imgCache.remove();
+                } catch (...) {}
                 // Audio HLS cache
                 try {
                     Poco::File audioHlsDir(audioHlsDirForMedia(id));
@@ -1000,12 +1292,13 @@ protected:
 
         // Make sure runtime directories exist
         try { Poco::File(UPLOAD_DIR).createDirectories(); } catch (...) {}
+        try { Poco::File(IMAGE_CACHE_DIR).createDirectories(); } catch (...) {}
         try { Poco::File(HLS_AUDIO_DIR).createDirectories(); } catch (...) {}
         try { Poco::File(HLS_DIR).createDirectories();    } catch (...) {}
         try { Poco::File(THUMB_DIR).createDirectories();  } catch (...) {}
 
         // Reconcile uploads/ with the DB
-        sweepOrphanUploads();
+        sweepOrphans();
 
         ServerSocket socket(PORT);
         HTTPServerParams* params = new HTTPServerParams();
@@ -1039,6 +1332,7 @@ protected:
             << "  GET    /api/media/{id}          detail\n"
             << "  PUT    /api/media/{id}          body: {\"title\":\"...\"}\n"
             << "  DELETE /api/media/{id}\n"
+            << "  GET    /api/media/{id}/image\n"
             << "  GET    /api/media/{id}/audio/playlist.m3u8\n"
             << "  GET    /api/media/{id}/stream/playlist.m3u8\n"
             << "  GET    /api/media/{id}/thumbnail\n\n"
