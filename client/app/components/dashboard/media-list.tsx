@@ -13,7 +13,7 @@ type Props = {
   selectedType: MediaTypeFilter;
 };
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 20;
 
 export default function MediaList({ selectedType }: Props) {
   const [searchQuery, setSearchQuery] = React.useState('');
