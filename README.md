@@ -59,16 +59,13 @@ The client is a Next.js + React web app. It uses TypeScript, ESLint, React Compi
 - @tanstack/react-query
 - @tanstack/react-query-devtools 
 
-
-
-By default it runs on http://localhost:3000/. Users can add media as an absolute path from the directory of the server, which gets displayed in the Library section of the dashboard. The View button streams an added video file, the Edit button allows the user to change the displayed Title and the Delete button removes the media from the server's database, along with all related cache files, playlist files and thumbnails. 
-
-As this is a work in progress, not all interface items have had their functionality added yet. Currently, the media type buttons in the side menu do not function: all media is shown. In addition, the favorites icon and categories section of the media cards, the settings icon on the dashboard and the search bar do not have any functionality attached and are merely placeholders. 
+By default it runs on http://localhost:3000/. Users can add media from their client's file browser, which gets displayed in the list of media on the dashboard. The View button displays an added media file on a separate page, the Edit button allows the user to change the displayed title and the Delete button removes the media from the server, along with all related cache files, playlist files and thumbnails. The side menu filters media based on its file type. The search bar can be used to filter any media currently in the list by their title. The media list also features pagination. 
 
 #### Server
 The server is a REST server made in C++, along with FFmpeg and the POCO libraries. It is compiled with CMake. It provides an API to the client and uses a SQLite database for data storage. By default, it runs on http://localhost:8080/.
 
-The following capabilites are currently implemented: 
+The following main capabilites are currently implemented: 
 - CRUD operations for media stored on the server
-- Stream added videos
+- Stream added videos and audio
+- Retrieve added images
 - Retrieve video thumbnails

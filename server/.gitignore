@@ -1,7 +1,8 @@
 build/
-hls_output
-hls_cache
+hls_audio_cache/
+hls_cache/
+image_cache/
 mediaroot_server
 mediacenter*
-thumbnails
+thumbnails/
 uploads/
