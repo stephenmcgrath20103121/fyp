@@ -35,13 +35,33 @@ export default function MediaCard({ media }: { media: Media }) {
   return (
     <Card sx={{ maxWidth: 200, maxHeight: 500, mt: 1.5, mb: 1.5, bgcolor: 'primary.main' }}>
       <CardHeader
-        title={
-          <Typography variant="h6" component="p" sx={{ color: 'primary.contrastText', maxWidth: 250, mt:1 }}>
-            {media.title}{" "}
-          </Typography>
-        }
-        sx={{ height: 140, color: 'tertiary.contrastText'}}
-      />
+  title={
+    <Typography
+      variant="h6"
+      component="p"
+      title={media.title}
+      sx={{
+        color: 'primary.contrastText',
+        mt: 1,
+        display: '-webkit-box',
+        WebkitLineClamp: 2,   //max 2 lines before truncation
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        overflowWrap: 'anywhere',   //split long words across lines
+        lineHeight: 1.2,
+      }}
+    >
+      {media.title}
+    </Typography>
+  }
+  sx={{
+    color: 'primary.contrastText',
+    minHeight: 72,
+    alignItems: 'flex-start',
+    '& .MuiCardHeader-content': { overflow: 'hidden' },
+  }}
+/>
 
       <CardMedia
         component="img"
